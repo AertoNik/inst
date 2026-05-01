@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NETWORK SIMULATOR</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="profile-header">
+            <div class="avatar"></div>
+            <div class="profile-info">
+                <h1 class="username">@user_simulator</h1>
+                <div class="stats">
+                    <div class="stat-box">
+                        <span class="stat-number" id="posts-count">0</span>
+                        <span class="stat-label">POSTS</span>
+                    </div>
+                    <div class="stat-box">
+                        <!-- contenteditable позволяет менять цифры прямо на странице -->
+                        <span class="stat-number" id="followers-count" contenteditable="true">1420</span>
+                        <span class="stat-label">FOLLOWERS</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-number" id="following-count" contenteditable="true">35</span>
+                        <span class="stat-label">FOLLOWING</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="controls">
+            <label for="image-upload" class="upload-btn">[ + UPLOAD NEW DATA ]</label>
+            <input type="file" id="image-upload" accept="image/*" style="display: none;">
+        </div>
+
+        <main class="feed-grid" id="feed">
+            <!-- Посты будут появляться здесь -->
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
