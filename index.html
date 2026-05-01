@@ -5,41 +5,86 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NETWORK SIMULATOR</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
+        <!-- Шапка профиля -->
         <header class="profile-header">
-            <div class="avatar"></div>
+            <div class="avatar-section">
+                <div class="avatar-wrapper" id="avatar-wrapper">
+                    <img id="avatar-image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23555'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E" alt="Avatar">
+                    <div class="avatar-overlay">+</div>
+                </div>
+                <input type="file" id="avatar-upload" accept="image/*" style="display: none;">
+            </div>
+
             <div class="profile-info">
-                <h1 class="username">@user_simulator</h1>
+                <div class="username-row">
+                    <h1 class="username" contenteditable="true">@your_account</h1>
+                </div>
                 <div class="stats">
                     <div class="stat-box">
                         <span class="stat-number" id="posts-count">0</span>
-                        <span class="stat-label">POSTS</span>
+                        <span class="stat-label">пупликаций</span>
                     </div>
                     <div class="stat-box">
-                        <!-- contenteditable позволяет менять цифры прямо на странице -->
                         <span class="stat-number" id="followers-count" contenteditable="true">1420</span>
-                        <span class="stat-label">FOLLOWERS</span>
+                        <span class="stat-label">подписчиков</span>
                     </div>
                     <div class="stat-box">
                         <span class="stat-number" id="following-count" contenteditable="true">35</span>
-                        <span class="stat-label">FOLLOWING</span>
+                        <span class="stat-label">подписок</span>
                     </div>
                 </div>
             </div>
         </header>
 
+        <!-- Описание профиля -->
+        <div class="profile-bio">
+            <div class="bio-name" contenteditable="true">Твое Имя</div>
+            <div class="bio-description" contenteditable="true">Здесь можно написать описание профиля.<br>Любой текст редактируется по клику.</div>
+        </div>
+
         <div class="controls">
-            <label for="image-upload" class="upload-btn">[ + UPLOAD NEW DATA ]</label>
+            <label for="image-upload" class="upload-btn">Добавить фото</label>
             <input type="file" id="image-upload" accept="image/*" style="display: none;">
         </div>
 
-        <main class="feed-grid" id="feed">
-            <!-- Посты будут появляться здесь -->
-        </main>
+        <!-- Сетка постов -->
+        <div class="tabs">
+            <div class="tab active">ПУБЛИКАЦИИ</div>
+        </div>
+        <main class="feed-grid" id="feed"></main>
     </div>
+
+    <!-- Модальное окно для просмотра фото -->
+    <div id="post-modal" class="modal">
+        <div class="modal-close" id="modal-close">&times;</div>
+        <div class="modal-content">
+            <div class="modal-image-container">
+                <img id="modal-image" src="" alt="Post">
+            </div>
+            <div class="modal-sidebar">
+                <div class="modal-header">
+                    <img id="modal-avatar" src="" alt="Avatar">
+                    <span id="modal-username" class="modal-user">@your_account</span>
+                </div>
+                <div class="modal-stats-live">
+                    <div class="reaction">
+                        <span class="icon">❤️</span> <span id="modal-likes">0</span>
+                    </div>
+                    <div class="reaction">
+                        <span class="icon">💬</span> <span id="modal-comments">0</span>
+                    </div>
+                    <div class="reaction">
+                        <span class="icon">🔄</span> <span id="modal-reposts">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
