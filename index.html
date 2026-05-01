@@ -1,81 +1,141 @@
 <!DOCTYPE html>
-<html lang="ru" class="dark">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NETWORK SIMULATOR</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: { noir: '#0a0a0c', noirLight: '#18181b', accent: '#3b82f6' },
-                    fontFamily: { sans: ['Inter', 'sans-serif'], display: ['Space Grotesk', 'sans-serif'] }
-                }
-            }
-        }
-    </script>
 </head>
-<body class="bg-black text-gray-100 flex justify-center min-h-screen">
-    <!-- Мобильный контейнер -->
-    <div class="w-full max-w-[450px] bg-noir min-h-screen relative shadow-2xl flex flex-col overflow-hidden">
-        
-        <!-- Верхняя панель -->
-        <header class="flex justify-between items-center p-4 border-b border-gray-800 z-10 bg-noir">
-            <button id="nav-btn-settings" class="text-2xl">≡</button>
-            <h1 id="header-username" class="font-display text-lg font-bold tracking-wider">@artnik_film</h1>
-            <button id="nav-btn-add" class="text-2xl">+</button>
+<body>
+    <div class="app-container">
+        <!-- ВЕРХНЯЯ ПАНЕЛЬ -->
+        <header class="top-bar">
+            <button class="icon-btn" onclick="switchTab('settings')">≡</button>
+            <h1 class="username-title" id="header-username">@artnik_film</h1>
+            <button class="icon-btn" onclick="openAddModal()">+</button>
         </header>
 
-        <!-- Основной контент (Виды) -->
-        <main id="main-content" class="flex-1 overflow-y-auto pb-16 hide-scrollbar relative">
-            <!-- Здесь рендерится профиль, настройки или статистика -->
+        <!-- ОСНОВНОЙ КОНТЕНТ (Переключение вкладок) -->
+        <main class="main-content">
+            
+            <!-- ЭКРАН: ПРОФИЛЬ -->
+            <div id="view-profile" class="view active">
+                <div class="profile-header">
+                    <div class="avatar-wrapper" onclick="document.getElementById('avatar-upload').click()">
+                        <img id="profile-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23555'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E">
+                        <input type="file" id="avatar-upload" accept="image/*" hidden>
+                    </div>
+                    <div class="profile-stats">
+                        <div class="stat-item"><span id="stat-posts">0</span><small>Посты</small></div>
+                        <div class="stat-item"><span id="stat-followers">1420</span><small>Подписчики</small></div>
+                        <div class="stat-item"><span id="stat-following">35</span><small>Подписки</small></div>
+                    </div>
+                </div>
+                <div class="profile-bio">
+                    <h2 id="bio-name">Твое Имя</h2>
+                    <p id="bio-text">Режиссер / Креатор<br>ARCHETYPE System</p>
+                    <a href="#" id="bio-link">ссылка.ком</a>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn" onclick="switchTab('settings')">Редактировать</button>
+                    <button class="btn">Поделиться</button>
+                </div>
+
+                <!-- Блок Сторис -->
+                <div class="stories-bar" id="stories-bar">
+                    <!-- Сторис генерируются здесь -->
+                </div>
+
+                <!-- Табы сетки -->
+                <div class="grid-tabs">
+                    <button class="grid-tab active" id="tab-btn-posts" onclick="setGridTab('posts')">▦ Посты</button>
+                    <button class="grid-tab" id="tab-btn-reels" onclick="setGridTab('reels')">▶ Reels</button>
+                </div>
+
+                <!-- Сетка фото/видео -->
+                <div class="feed-grid" id="profile-grid"></div>
+            </div>
+
+            <!-- ЭКРАН: СТАТИСТИКА -->
+            <div id="view-stats" class="view">
+                <div class="pad-15">
+                    <h2>Аналитика профиля</h2>
+                    <div class="stats-cards">
+                        <div class="card">Охват (Просмотры)<br><b id="total-views" class="accent-text">0</b></div>
+                        <div class="card">Всего лайков<br><b id="total-likes">0</b></div>
+                        <div class="card">Комментарии<br><b id="total-comments">0</b></div>
+                        <div class="card">Репосты<br><b id="total-reposts">0</b></div>
+                    </div>
+                    <p class="hint">Алгоритм симуляции работает. Охваты зависят от количества твоих подписчиков и времени жизни публикации.</p>
+                </div>
+            </div>
+
+            <!-- ЭКРАН: НАСТРОЙКИ -->
+            <div id="view-settings" class="view">
+                <div class="pad-15">
+                    <h2>Настройки</h2>
+                    <div class="input-group">
+                        <label>Тема оформления</label>
+                        <button class="btn" onclick="toggleTheme()">Переключить Dark/Light</button>
+                    </div>
+                    <div class="input-group">
+                        <label>Никнейм</label>
+                        <input type="text" id="inp-username" class="input-field">
+                    </div>
+                    <div class="input-group">
+                        <label>Подписчики (влияет на охваты)</label>
+                        <input type="number" id="inp-followers" class="input-field">
+                    </div>
+                    <button class="btn primary-btn" onclick="saveSettings()">Сохранить профиль</button>
+                    
+                    <hr class="divider">
+                    <button class="btn danger-btn" onclick="resetProgress()">⚠️ Сбросить весь прогресс</button>
+                </div>
+            </div>
         </main>
 
-        <!-- Нижняя навигация -->
-        <nav class="absolute bottom-0 w-full h-14 bg-noir border-t border-gray-800 flex justify-around items-center z-20">
-            <button id="tab-home" class="text-2xl opacity-50 hover:opacity-100 transition">🏠</button>
-            <button id="tab-reels" class="text-2xl opacity-50 hover:opacity-100 transition">▶️</button>
-            <button id="tab-stats" class="text-2xl opacity-50 hover:opacity-100 transition">📊</button>
-            <button id="tab-profile" class="w-8 h-8 rounded-full bg-gray-700 overflow-hidden border-2 border-transparent transition">
-                <img id="nav-avatar" src="" alt="Profile" class="w-full h-full object-cover">
-            </button>
+        <!-- НИЖНЯЯ НАВИГАЦИЯ -->
+        <nav class="bottom-nav">
+            <button class="nav-btn" onclick="switchTab('profile')">🏠</button>
+            <button class="nav-btn">🔍</button>
+            <button class="nav-btn" onclick="openAddModal()">➕</button>
+            <button class="nav-btn" onclick="switchTab('stats')">📊</button>
+            <button class="nav-btn" onclick="switchTab('profile')">👤</button>
         </nav>
 
-        <!-- Модальное окно добавления -->
-        <div id="add-modal" class="fixed inset-0 bg-black/90 z-50 hidden flex-col justify-end">
-            <div class="bg-noirLight rounded-t-2xl p-6 flex flex-col gap-4 animate-slide-up">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold">Создать</h2>
-                    <button id="close-add-modal" class="text-gray-400 text-2xl">&times;</button>
+        <!-- МОДАЛКА ДОБАВЛЕНИЯ -->
+        <div id="modal-add" class="modal hidden">
+            <div class="modal-content slide-up">
+                <div class="modal-header">
+                    <h3>Создать</h3>
+                    <button class="close-btn" onclick="closeModals()">&times;</button>
                 </div>
-                <label class="btn-primary text-center cursor-pointer">
-                    Добавить Публикацию (Фото/Видео)
-                    <input type="file" id="upload-post" accept="image/*,video/*" class="hidden">
-                </label>
-                <label class="btn-primary text-center cursor-pointer">
-                    Добавить Reels
-                    <input type="file" id="upload-reel" accept="video/*" class="hidden">
-                </label>
-                <label class="btn-primary text-center cursor-pointer bg-gradient-to-r from-orange-500 to-pink-600 border-none text-white">
-                    Добавить Историю
-                    <input type="file" id="upload-story" accept="image/*,video/*" class="hidden">
-                </label>
+                <label class="btn add-btn">Добавить Пост (Фото/Видео) <input type="file" id="upload-post" accept="image/*,video/*" hidden></label>
+                <label class="btn add-btn">Добавить Reels (Видео) <input type="file" id="upload-reel" accept="video/*" hidden></label>
+                <label class="btn add-btn story-btn">Добавить Историю <input type="file" id="upload-story" accept="image/*,video/*" hidden></label>
             </div>
         </div>
 
-        <!-- Полноэкранный просмотр медиа / Сторис -->
-        <div id="viewer-modal" class="fixed inset-0 bg-black z-[60] hidden flex-col">
-            <div id="viewer-progress" class="w-full h-1 bg-gray-800 hidden"><div id="viewer-bar" class="h-full bg-white w-0 transition-all duration-1000"></div></div>
-            <button id="close-viewer" class="absolute top-4 right-4 text-white text-3xl z-[70] drop-shadow-md">&times;</button>
-            <div id="viewer-content" class="flex-1 flex justify-center items-center overflow-hidden relative"></div>
-            <div id="viewer-info" class="p-4 bg-gradient-to-t from-black to-transparent"></div>
+        <!-- ПОЛНОЭКРАННЫЙ ПРОСМОТР (Viewer) -->
+        <div id="modal-viewer" class="viewer hidden">
+            <div id="story-progress" class="story-progress hidden"><div id="story-bar"></div></div>
+            <button class="close-viewer-btn" onclick="closeModals()">&times;</button>
+            
+            <div id="viewer-media" class="viewer-media"></div>
+            
+            <div id="viewer-info" class="viewer-info">
+                <!-- Статистика и комменты -->
+            </div>
+            
+            <!-- Поле для своих комментов -->
+            <div id="my-comment-box" class="comment-box hidden">
+                <input type="text" id="my-comment-input" placeholder="Добавить комментарий...">
+                <button onclick="addMyComment()">Отправить</button>
+            </div>
         </div>
-    </div>
 
-    <script type="module" src="js/app.js"></script>
+    </div>
+    <script src="script.js"></script>
 </body>
 </html>
