@@ -1,142 +1,81 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NETWORK SIMULATOR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { noir: '#0a0a0c', noirLight: '#18181b', accent: '#3b82f6' },
+                    fontFamily: { sans: ['Inter', 'sans-serif'], display: ['Space Grotesk', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
 </head>
-<body>
-    <!-- Главный контейнер в виде экрана телефона -->
-    <div class="app-container">
+<body class="bg-black text-gray-100 flex justify-center min-h-screen">
+    <!-- Мобильный контейнер -->
+    <div class="w-full max-w-[450px] bg-noir min-h-screen relative shadow-2xl flex flex-col overflow-hidden">
         
-        <!-- ================= ГЛАВНАЯ ЛЕНТА (HOME) ================= -->
-        <div id="view-home" class="view hidden">
-            <div class="top-header">
-                <div class="logo-text">Simulator</div>
-            </div>
-            
-            <!-- Секция Сторис на главной -->
-            <div class="stories-container" id="home-stories">
-                <div class="story" id="add-story-btn">
-                    <div class="story-ring add-ring">
-                        <img id="home-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23555'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E" alt="Avatar">
-                        <div class="story-add-icon">+</div>
-                    </div>
-                    <span class="story-name">Ваша история</span>
-                    <input type="file" id="story-upload" accept="image/*" style="display: none;">
-                </div>
-                <!-- Активные сторис будут здесь -->
-            </div>
+        <!-- Верхняя панель -->
+        <header class="flex justify-between items-center p-4 border-b border-gray-800 z-10 bg-noir">
+            <button id="nav-btn-settings" class="text-2xl">≡</button>
+            <h1 id="header-username" class="font-display text-lg font-bold tracking-wider">@artnik_film</h1>
+            <button id="nav-btn-add" class="text-2xl">+</button>
+        </header>
 
-            <!-- Лента чужих постов -->
-            <div class="fake-feed" id="fake-feed">
-                <!-- Генерируется через JS -->
-            </div>
-        </div>
+        <!-- Основной контент (Виды) -->
+        <main id="main-content" class="flex-1 overflow-y-auto pb-16 hide-scrollbar relative">
+            <!-- Здесь рендерится профиль, настройки или статистика -->
+        </main>
 
-        <!-- ================= ПРОФИЛЬ (PROFILE) ================= -->
-        <div id="view-profile" class="view active">
-            <div class="top-header">
-                <div class="header-icon">+</div>
-                <div class="username-title" id="header-username">@your_account</div>
-                <div class="header-icon" onclick="switchView('view-settings')">≡</div>
-            </div>
-
-            <div class="profile-header">
-                <div class="avatar-wrapper" id="avatar-wrapper">
-                    <img id="profile-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23555'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E" alt="Avatar">
-                    <input type="file" id="avatar-upload" accept="image/*" style="display: none;">
-                </div>
-                <div class="stats">
-                    <div class="stat-box"><span class="stat-number" id="posts-count">0</span><span class="stat-label">публикации</span></div>
-                    <div class="stat-box"><span class="stat-number" id="followers-count" contenteditable="true">178</span><span class="stat-label">подписчики</span></div>
-                    <div class="stat-box"><span class="stat-number" id="following-count" contenteditable="true">48</span><span class="stat-label">друзей</span></div>
-                </div>
-            </div>
-
-            <div class="profile-bio">
-                <div class="bio-name" contenteditable="true">Твое Имя</div>
-                <div class="bio-description" contenteditable="true">🍾 in the end I am always alone 🥂<br>ARCHETYPE System Active</div>
-            </div>
-
-            <div class="action-buttons">
-                <button class="action-btn">Редактировать</button>
-                <button class="action-btn">Поделиться профилем</button>
-            </div>
-
-            <div class="highlights-container">
-                <div class="highlight">
-                    <div class="highlight-ring"><div class="add-highlight">+</div></div>
-                    <span class="highlight-name">Добавить</span>
-                </div>
-                <div class="highlight"><div class="highlight-ring" style="background:#333"></div><span class="highlight-name">THE WARDEN</span></div>
-            </div>
-
-            <div class="grid-tabs">
-                <div class="grid-tab active">▦</div>
-                <div class="grid-tab">▶</div>
-                <div class="grid-tab">👤</div>
-            </div>
-
-            <div class="controls" style="margin-top: 10px; text-align: center;">
-                <label for="image-upload" class="upload-link">Добавить фото в профиль</label>
-                <input type="file" id="image-upload" accept="image/*" style="display: none;">
-            </div>
-
-            <main class="feed-grid" id="profile-feed"></main>
-        </div>
-
-        <!-- ================= НАСТРОЙКИ (SETTINGS) ================= -->
-        <div id="view-settings" class="view hidden">
-            <div class="top-header">
-                <div class="header-icon" onclick="switchView('view-profile')">←</div>
-                <div class="username-title">Настройки и статистика</div>
-                <div class="header-icon"></div>
-            </div>
-            
-            <div class="settings-list">
-                <div class="settings-item">
-                    <span>Тема оформления</span>
-                    <button id="theme-toggle" class="action-btn" style="width: auto; padding: 5px 15px;">Тёмная / Светлая</button>
-                </div>
-                
-                <div class="settings-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
-                    <span style="font-weight: 600;">Статистика симулятора</span>
-                    <div class="stats-card">
-                        <div>Всего заработано лайков: <span id="total-likes-stat" style="color: var(--accent); font-weight: bold;">0</span></div>
-                        <div>Запусков системы: <span id="sessions-stat">1</span></div>
-                        <div>Активных Сторис: <span id="active-stories-stat">0</span></div>
-                    </div>
-                </div>
-
-                <div class="settings-item" style="margin-top: 40px; border-bottom: none; justify-content: center;">
-                    <button id="reset-btn" class="action-btn" style="background: #ff4d4d; color: white;">⚠️ СБРОСИТЬ ВЕСЬ ПРОГРЕСС</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- ================= НИЖНЕЕ МЕНЮ ================= -->
-        <nav class="bottom-nav">
-            <div class="nav-item" onclick="switchView('view-home')">🏠</div>
-            <div class="nav-item">🔍</div>
-            <div class="nav-item">➕</div>
-            <div class="nav-item">▶️</div>
-            <div class="nav-item" onclick="switchView('view-profile')">
-                <img id="nav-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23555'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E" alt="Nav">
-                <div class="nav-dot"></div>
-            </div>
+        <!-- Нижняя навигация -->
+        <nav class="absolute bottom-0 w-full h-14 bg-noir border-t border-gray-800 flex justify-around items-center z-20">
+            <button id="tab-home" class="text-2xl opacity-50 hover:opacity-100 transition">🏠</button>
+            <button id="tab-reels" class="text-2xl opacity-50 hover:opacity-100 transition">▶️</button>
+            <button id="tab-stats" class="text-2xl opacity-50 hover:opacity-100 transition">📊</button>
+            <button id="tab-profile" class="w-8 h-8 rounded-full bg-gray-700 overflow-hidden border-2 border-transparent transition">
+                <img id="nav-avatar" src="" alt="Profile" class="w-full h-full object-cover">
+            </button>
         </nav>
+
+        <!-- Модальное окно добавления -->
+        <div id="add-modal" class="fixed inset-0 bg-black/90 z-50 hidden flex-col justify-end">
+            <div class="bg-noirLight rounded-t-2xl p-6 flex flex-col gap-4 animate-slide-up">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold">Создать</h2>
+                    <button id="close-add-modal" class="text-gray-400 text-2xl">&times;</button>
+                </div>
+                <label class="btn-primary text-center cursor-pointer">
+                    Добавить Публикацию (Фото/Видео)
+                    <input type="file" id="upload-post" accept="image/*,video/*" class="hidden">
+                </label>
+                <label class="btn-primary text-center cursor-pointer">
+                    Добавить Reels
+                    <input type="file" id="upload-reel" accept="video/*" class="hidden">
+                </label>
+                <label class="btn-primary text-center cursor-pointer bg-gradient-to-r from-orange-500 to-pink-600 border-none text-white">
+                    Добавить Историю
+                    <input type="file" id="upload-story" accept="image/*,video/*" class="hidden">
+                </label>
+            </div>
+        </div>
+
+        <!-- Полноэкранный просмотр медиа / Сторис -->
+        <div id="viewer-modal" class="fixed inset-0 bg-black z-[60] hidden flex-col">
+            <div id="viewer-progress" class="w-full h-1 bg-gray-800 hidden"><div id="viewer-bar" class="h-full bg-white w-0 transition-all duration-1000"></div></div>
+            <button id="close-viewer" class="absolute top-4 right-4 text-white text-3xl z-[70] drop-shadow-md">&times;</button>
+            <div id="viewer-content" class="flex-1 flex justify-center items-center overflow-hidden relative"></div>
+            <div id="viewer-info" class="p-4 bg-gradient-to-t from-black to-transparent"></div>
+        </div>
     </div>
 
-    <!-- Модальное окно просмотра Истории -->
-    <div id="story-viewer" class="story-viewer">
-        <div class="story-progress"><div class="story-progress-bar" id="story-bar"></div></div>
-        <img id="story-viewer-img" src="" alt="Story">
-        <div class="story-views-overlay">👁 <span id="story-views-count">0</span> просмотров</div>
-    </div>
-
-    <script src="script.js"></script>
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>
