@@ -165,10 +165,11 @@ async function resetProgress() {
 
 // --- 5. РЕНДЕР КОНТЕНТА ---
 async function renderGrid() {
-    const grid = document.getElementById('profile-grid');
-    grid.innerHTML = '';
     const items = state.posts.filter(p => currentGridTab === 'reels' ? p.type === 'reel' : p.type === 'post').reverse();
     document.getElementById('stat-posts').innerText = state.posts.filter(p => p.type !== 'story').length;
+
+    // Создаем виртуальный контейнер, чтобы не было рывков
+    const fragment = document.createDocumentFragment();
 
     for (const item of items) {
         const src = await getMediaFile(item.id);
@@ -188,8 +189,13 @@ async function renderGrid() {
         } else {
             div.innerHTML = `<img src="${src}">`;
         }
-        grid.appendChild(div);
+        fragment.appendChild(div);
     }
+
+    // Разом заменяем всё содержимое сетки
+    const grid = document.getElementById('profile-grid');
+    grid.innerHTML = '';
+    grid.appendChild(fragment);
 }
 
 // Динамическое обновление просмотров на обложках
@@ -206,9 +212,10 @@ function updateGridViews() {
 }
 
 async function renderStories() {
-    const bar = document.getElementById('stories-bar');
-    bar.innerHTML = '';
     const activeStories = state.posts.filter(p => p.type === 'story' && (Date.now() - p.timestamp) < 300000);
+    
+    // Виртуальный контейнер для сторис
+    const fragment = document.createDocumentFragment();
 
     for (const story of activeStories) {
         const src = await getMediaFile(story.id);
@@ -216,8 +223,13 @@ async function renderStories() {
         div.className = 'story-circle';
         div.onclick = () => openViewer(story, src);
         div.innerHTML = src.startsWith('data:video') ? `<video src="${src}" muted></video>` : `<img src="${src}">`;
-        bar.appendChild(div);
+        fragment.appendChild(div);
     }
+
+    // Обновляем разом
+    const bar = document.getElementById('stories-bar');
+    bar.innerHTML = '';
+    bar.appendChild(fragment);
 }
 
 function renderStatsPage() {
@@ -261,15 +273,25 @@ async function handleUpload(e, type) {
         const id = 'media_' + Date.now();
         await saveMediaFile(id, event.target.result);
         
-        // Автоопределение для постов (фото или видео)
         let actualType = type;
         if(type === 'post' && file.type.startsWith('video/')) actualType = 'video';
 
         state.posts.push({ id, type: actualType, timestamp: Date.now(), myComments: [] });
         saveStateLocally();
-        updateFullUI();
+        
         closeModals();
-        if(type === 'story') switchTab('profile');
+        
+        // Точечное обновление интерфейса вместо полной перезагрузки
+        if (type === 'story') {
+            renderStories();
+        } else {
+            renderGrid();
+        }
+        
+        // Переключаем на вкладку профиля, только если мы находимся не на ней
+        if (!document.getElementById('view-profile').classList.contains('active')) {
+            switchTab('profile');
+        }
     };
     reader.readAsDataURL(file);
 }
