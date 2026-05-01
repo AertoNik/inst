@@ -1,3 +1,10 @@
+// --- 0. БИБЛИОТЕКА ИКОНОК (SVG) ---
+const ICO_HEART = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+const ICO_COMMENT = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>`;
+const ICO_SHARE = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
+const ICO_EYE = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+const ICO_PLAY = `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="currentColor" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
+
 // --- 1. ЛОКАЛЬНАЯ БАЗА ДАННЫХ (Для медиа) ---
 const DB_NAME = 'InstaSimDB';
 function initDB() {
@@ -54,9 +61,8 @@ let currentViewItem = null;
 function saveStateLocally() { localStorage.setItem('insta_sim_state', JSON.stringify(state)); }
 
 // --- 3. ДВИЖОК СИМУЛЯЦИИ РОСТА И ПАДЕНИЯ ---
-// Разделили на звезд (редкие) и обычных пользователей
 const STAR_USERS = ["mrbeast", "zendaya", "cristiano", "tomholland2013", "leomessi", "elonmusk"];
-const REGULAR_USERS = ["cyber.neo", "detective_sys", "warden_official", "pastry.pro", "night_owl", "shadow.walker", "neon_dreamer", "art.lover99", "cinematic.vibe", "urban.explore", "user_19924"];
+const REGULAR_USERS = ["cyber.neo", "detective_sys", "warden_official", "pastry.pro", "night_owl", "shadow.walker", "neon_dreamer", "art.lover99", "cinematic.vibe", "urban.explore"];
 const FAKE_COMMENTS = ["This is insane! 🔥", "Broooo", "Атмосферно!", "Где это?", "Топ", "Очень красиво 🎬", "bro this is good", "love this", "Шедевр!", "Идеальный свет", "Вайбово", "Keep it up! 👏", "Amazing work", "Ну это развал 🤯", "Научи так же", "Как всегда на высоте"];
 
 function formatNum(num) {
@@ -64,8 +70,6 @@ function formatNum(num) {
     if (num >= 10000) return (num / 1000).toFixed(1) + 'k';
     return num.toLocaleString('ru-RU');
 }
-
-// ... остальной код calculateLiveStats остается без изменений ...
 
 function calculateLiveStats(item) {
     const ageMinutes = Math.max((Date.now() - item.timestamp) / 60000, 0);
@@ -100,14 +104,15 @@ function calculateLiveStats(item) {
 function updateFullUI() {
     document.body.className = state.theme === 'dark' ? 'dark-mode' : '';
     document.getElementById('header-name-text').innerText = `@${state.username}`;
-    document.getElementById('stat-followers').innerText = formatNum(state.followers);
-    document.getElementById('stat-following').innerText = state.following;
     document.getElementById('bio-name').innerText = state.bioName;
     document.getElementById('bio-text').innerText = state.bioText;
+    
+    document.getElementById('stat-followers').innerText = formatNum(state.followers);
+    document.getElementById('stat-following').innerText = state.following;
+    
     document.getElementById('inp-username').value = state.username;
     document.getElementById('inp-followers').value = state.followers;
 
-    // Галочка
     const badges = [document.getElementById('badge-header'), document.getElementById('badge-bio')];
     const btnVerify = document.getElementById('btn-verify');
     if (state.verified) {
@@ -168,7 +173,6 @@ async function renderGrid() {
     const items = state.posts.filter(p => currentGridTab === 'reels' ? p.type === 'reel' : p.type === 'post').reverse();
     document.getElementById('stat-posts').innerText = state.posts.filter(p => p.type !== 'story').length;
 
-    // Создаем виртуальный контейнер, чтобы не было рывков
     const fragment = document.createDocumentFragment();
 
     for (const item of items) {
@@ -183,8 +187,8 @@ async function renderGrid() {
         if (isVideo) {
             div.innerHTML = `
                 <video src="${src}" muted></video>
-                <div class="feed-icon">▶</div>
-                <div class="grid-views-overlay" id="grid-views-${item.id}">▶ ${formatNum(stats.views)}</div>
+                <div class="feed-icon" style="display:flex; align-items:center;">${ICO_PLAY}</div>
+                <div class="grid-views-overlay" id="grid-views-${item.id}">${ICO_PLAY} ${formatNum(stats.views)}</div>
             `;
         } else {
             div.innerHTML = `<img src="${src}">`;
@@ -192,20 +196,18 @@ async function renderGrid() {
         fragment.appendChild(div);
     }
 
-    // Разом заменяем всё содержимое сетки
     const grid = document.getElementById('profile-grid');
     grid.innerHTML = '';
     grid.appendChild(fragment);
 }
 
-// Динамическое обновление просмотров на обложках
 function updateGridViews() {
     state.posts.forEach(p => {
         if (p.type === 'video' || p.type === 'reel') {
             const el = document.getElementById(`grid-views-${p.id}`);
             if (el) {
                 const s = calculateLiveStats(p);
-                el.innerText = `▶ ${formatNum(s.views)}`;
+                el.innerHTML = `${ICO_PLAY} ${formatNum(s.views)}`;
             }
         }
     });
@@ -213,8 +215,6 @@ function updateGridViews() {
 
 async function renderStories() {
     const activeStories = state.posts.filter(p => p.type === 'story' && (Date.now() - p.timestamp) < 300000);
-    
-    // Виртуальный контейнер для сторис
     const fragment = document.createDocumentFragment();
 
     for (const story of activeStories) {
@@ -226,7 +226,6 @@ async function renderStories() {
         fragment.appendChild(div);
     }
 
-    // Обновляем разом
     const bar = document.getElementById('stories-bar');
     bar.innerHTML = '';
     bar.appendChild(fragment);
@@ -280,15 +279,12 @@ async function handleUpload(e, type) {
         saveStateLocally();
         
         closeModals();
-        
-        // Точечное обновление интерфейса вместо полной перезагрузки
         if (type === 'story') {
             renderStories();
         } else {
             renderGrid();
         }
         
-        // Переключаем на вкладку профиля, только если мы находимся не на ней
         if (!document.getElementById('view-profile').classList.contains('active')) {
             switchTab('profile');
         }
@@ -324,7 +320,7 @@ function openViewer(item, src) {
     if (item.type === 'story') {
         storyProg.classList.remove('hidden');
         commentBox.classList.add('hidden');
-        infoBox.innerHTML = `<div>👁 ${formatNum(stats.views)} просмотров</div>`;
+        infoBox.innerHTML = `<div style="display:flex; align-items:center; gap:6px; font-weight: 600;">${ICO_EYE} ${formatNum(stats.views)} просмотров</div>`;
         storyBar.style.transition = 'none'; storyBar.style.width = '0%';
         setTimeout(() => { storyBar.style.transition = 'width 5s linear'; storyBar.style.width = '100%'; }, 50);
         window.storyTimer = setTimeout(closeModals, 5000);
@@ -335,29 +331,25 @@ function openViewer(item, src) {
         let commentsHTML = '';
         if(item.myComments) item.myComments.forEach(c => commentsHTML += `<div style="margin-bottom:8px"><b>@${state.username}</b> <span style="color:#eee">${c}</span></div>`);
         
-        // Показываем до 15 комментариев, чтобы можно было читать
         const commentsToShow = Math.min(stats.comments, 15);
         for(let i=0; i<commentsToShow; i++) {
             let u, vBadge = '';
-            
-            // Шанс 10% что это звезда с галочкой
             if (Math.random() < 0.1) {
                 u = STAR_USERS[(i + item.timestamp) % STAR_USERS.length];
                 vBadge = `<span class="verified-badge" style="width:12px; height:12px;"></span>`;
             } else {
                 u = REGULAR_USERS[(i + item.timestamp) % REGULAR_USERS.length];
             }
-            
             const t = FAKE_COMMENTS[(i + item.timestamp) % FAKE_COMMENTS.length];
             commentsHTML += `<div style="margin-bottom:8px; color:#aaa; line-height: 1.3;"><b>${u}</b>${vBadge} <span style="color:#eee">${t}</span></div>`;
         }
 
         infoBox.innerHTML = `
-            <div style="font-size:20px; margin-bottom:10px; display:flex; gap:15px">
-                <span>❤️ ${formatNum(stats.likes)}</span>
-                <span>💬 ${formatNum(stats.comments)}</span>
-                <span>↗️ ${formatNum(stats.reposts)}</span>
-                ${(item.type === 'reel' || item.type === 'video') ? `<span>👁 ${formatNum(stats.views)}</span>` : ''}
+            <div style="margin-bottom:15px; display:flex; gap:18px; align-items:center;">
+                <span style="display:flex; align-items:center; gap:5px; font-weight:600;">${ICO_HEART} ${formatNum(stats.likes)}</span>
+                <span style="display:flex; align-items:center; gap:5px; font-weight:600;">${ICO_COMMENT} ${formatNum(stats.comments)}</span>
+                <span style="display:flex; align-items:center; gap:5px; font-weight:600;">${ICO_SHARE} ${formatNum(stats.reposts)}</span>
+                ${(item.type === 'reel' || item.type === 'video') ? `<span style="display:flex; align-items:center; gap:5px; font-weight:600;">${ICO_EYE} ${formatNum(stats.views)}</span>` : ''}
             </div>
             <div style="max-height:150px; overflow-y:auto; font-size:14px; border-top:1px solid #333; padding-top:10px;">
                 ${commentsHTML || '<div style="color:#777">Нет комментариев</div>'}
@@ -377,27 +369,19 @@ function addMyComment() {
     }
 }
 
-// --- 7. ЖИВОЙ ЦИКЛ (Шанс роста 85%, Отписка 15%) ---
+// --- 7. ЖИВОЙ ЦИКЛ ---
 setInterval(() => {
     let hasChanges = false;
-
-    // 70% шанс на триггер события каждую секунду
     if (Math.random() > 0.3) {
         let currentF = parseInt(state.followers) || 0;
         let diff = 0;
-        
-        // Множитель: чем больше база, тем мощнее скачки
         let tierMult = 1;
         if (currentF > 100000) tierMult = 50;
         else if (currentF > 10000) tierMult = 10;
         else if (currentF > 1000) tierMult = 3;
 
-        // 85% шанс роста, 15% шанс отписки
-        if (Math.random() < 0.15) {
-            diff = -(Math.floor(Math.random() * 2 * tierMult) + 1); 
-        } else {
-            diff = Math.floor(Math.random() * 4 * tierMult) + 1; 
-        }
+        if (Math.random() < 0.15) diff = -(Math.floor(Math.random() * 2 * tierMult) + 1); 
+        else diff = Math.floor(Math.random() * 4 * tierMult) + 1; 
 
         if (currentF + diff < 0) diff = -currentF;
 
@@ -421,8 +405,9 @@ setInterval(() => {
 
     renderStatsPage();
     renderStories();
-    updateGridViews(); // Обновление счетчиков прямо на обложках
+    updateGridViews();
 }, 2000);
+
 // Автосохранение при редактировании имени и описания
 document.getElementById('bio-name').addEventListener('input', (e) => { 
     state.bioName = e.target.innerText; 
@@ -432,4 +417,5 @@ document.getElementById('bio-text').addEventListener('input', (e) => {
     state.bioText = e.target.innerText; 
     saveStateLocally(); 
 });
+
 updateFullUI();
