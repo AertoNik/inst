@@ -12,7 +12,10 @@
         <!-- ВЕРХНЯЯ ПАНЕЛЬ -->
         <header class="top-bar">
             <button class="icon-btn" onclick="switchTab('settings')">≡</button>
-            <h1 class="username-title" id="header-username">@artnik_film</h1>
+            <h1 class="username-title" id="header-username">
+                <span id="header-name-text">@artnik_film</span>
+                <span id="badge-header" class="verified-badge hidden"></span>
+            </h1>
             <button class="icon-btn" onclick="openAddModal()">+</button>
         </header>
 
@@ -33,7 +36,10 @@
                     </div>
                 </div>
                 <div class="profile-bio">
-                    <h2 id="bio-name">Твое Имя</h2>
+                    <h2 id="bio-name-container">
+                        <span id="bio-name">Твое Имя</span>
+                        <span id="badge-bio" class="verified-badge hidden"></span>
+                    </h2>
                     <p id="bio-text">Режиссер / Креатор<br>ARCHETYPE System</p>
                     <a href="#" id="bio-link">ссылка.ком</a>
                 </div>
@@ -60,7 +66,6 @@
                 <div class="pad-15">
                     <h2>Аналитика профиля</h2>
                     <div class="stats-cards">
-                        <!-- Новая карточка динамики -->
                         <div class="card" style="grid-column: span 2; text-align: center; background: #1a1a1a;">
                             <span style="font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Динамика аудитории (24ч)</span><br>
                             <div style="display: flex; justify-content: space-around; margin-top: 15px; align-items: center;">
@@ -69,7 +74,6 @@
                                 <div style="color: #f87171; font-size: 28px; font-weight: bold;">-<span id="stat-24-minus">0</span></div>
                             </div>
                         </div>
-
                         <div class="card">Охват (Просмотры)<br><b id="total-views" class="accent-text">0</b></div>
                         <div class="card">Всего лайков<br><b id="total-likes">0</b></div>
                         <div class="card">Комментарии<br><b id="total-comments">0</b></div>
@@ -83,6 +87,10 @@
                 <div class="pad-15">
                     <h2>Настройки</h2>
                     <div class="input-group">
+                        <label>Официальный аккаунт</label>
+                        <button class="btn" onclick="toggleVerification()" id="btn-verify">Включить галочку верификации</button>
+                    </div>
+                    <div class="input-group">
                         <label>Тема оформления</label>
                         <button class="btn" onclick="toggleTheme()">Переключить Dark/Light</button>
                     </div>
@@ -91,7 +99,7 @@
                         <input type="text" id="inp-username" class="input-field">
                     </div>
                     <div class="input-group">
-                        <label>Подписчики (Стартовая база)</label>
+                        <label>Подписчики (Для алгоритма охватов)</label>
                         <input type="number" id="inp-followers" class="input-field">
                     </div>
                     <button class="btn primary-btn" onclick="saveSettings()">Сохранить профиль</button>
