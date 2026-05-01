@@ -5,7 +5,7 @@ const ICO_SHARE = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="curre
 const ICO_EYE = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
 const ICO_PLAY = `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="currentColor" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
 
-// --- 1. ЛОКАЛЬНАЯ БАЗА ДАННЫХ (Для медиа) ---
+// --- 1. ЛОКАЛЬНАЯ БАЗА ДАННЫХ (IndexedDB) ---
 const DB_NAME = 'InstaSimDB';
 function initDB() {
    return new Promise((resolve, reject) => {
@@ -30,6 +30,14 @@ async function getMediaFile(id) {
        req.onsuccess = () => resolve(req.result);
    });
 }
+async function deleteMediaFile(id) { // НОВАЯ ФУНКЦИЯ ДЛЯ УДАЛЕНИЯ
+    const db = await initDB();
+    return new Promise(resolve => {
+        const tx = db.transaction('media', 'readwrite');
+        tx.objectStore('media').delete(id);
+        tx.oncomplete = () => resolve();
+    });
+}
 async function clearDB() {
    const db = await initDB();
    db.transaction('media', 'readwrite').objectStore('media').clear();
@@ -45,7 +53,7 @@ const defaultState = {
    followers: 1420,
    following: 35,
    avatarId: null,
-   posts: [],
+   posts: [], // {id, type, timestamp, myComments, archived: false, extraLikes: 0}
    history: []
 };
 
@@ -54,9 +62,14 @@ if (!state.history) state.history = [];
 if (state.verified === undefined) state.verified = false;
 if (!state.bioName) state.bioName = defaultState.bioName;
 if (!state.bioText) state.bioText = defaultState.bioText;
+state.posts.forEach(p => { 
+    if(p.archived === undefined) p.archived = false; 
+    if(p.extraLikes === undefined) p.extraLikes = 0; // Лайки от двойного тапа
+});
 
 let currentGridTab = 'posts';
 let currentViewItem = null;
+let lastTapTime = 0; // Для отслеживания двойного тапа
 
 function saveStateLocally() { localStorage.setItem('insta_sim_state', JSON.stringify(state)); }
 
@@ -85,7 +98,6 @@ function calculateLiveStats(item) {
 
    const growth = Math.log10(ageMinutes * 2 + 1);
 
-   // Добавили поддержку старых фото (item.type === 'photo')
    if (item.type === 'post' || item.type === 'photo') {
        likes = Math.floor(f * 0.15 * growth);
        comments = Math.floor(likes * 0.05);
@@ -96,6 +108,9 @@ function calculateLiveStats(item) {
        comments = Math.floor(likes * 0.1);
        reposts = Math.floor(views * 0.05);
    }
+
+   // Прибавляем бонусные лайки от Double Tap
+   likes += (item.extraLikes || 0);
 
    const myCommentsCount = item.myComments ? item.myComments.length : 0;
    return { likes, views, comments: comments + myCommentsCount, reposts };
@@ -131,9 +146,7 @@ function updateFullUI() {
    renderStatsPage();
 }
 
-function updateLiveNumbers() {
-   document.getElementById('stat-followers').innerText = formatNum(state.followers);
-}
+function updateLiveNumbers() { document.getElementById('stat-followers').innerText = formatNum(state.followers); }
 
 function switchTab(tabId) {
    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -145,20 +158,17 @@ function setGridTab(tab) {
    currentGridTab = tab;
    document.getElementById('tab-btn-posts').classList.toggle('active', tab === 'posts');
    document.getElementById('tab-btn-reels').classList.toggle('active', tab === 'reels');
+   document.getElementById('tab-btn-archive').classList.toggle('active', tab === 'archive');
    renderGrid();
 }
 
 function toggleTheme() { state.theme = state.theme === 'dark' ? 'light' : 'dark'; saveStateLocally(); document.body.className = state.theme === 'dark' ? 'dark-mode' : ''; }
 function toggleVerification() { state.verified = !state.verified; saveStateLocally(); updateFullUI(); }
-
 function saveSettings() {
    state.username = document.getElementById('inp-username').value;
    state.followers = parseInt(document.getElementById('inp-followers').value) || 0;
-   saveStateLocally();
-   updateFullUI();
-   switchTab('profile');
+   saveStateLocally(); updateFullUI(); switchTab('profile');
 }
-
 async function resetProgress() {
    if(confirm('Точно сбросить? Все фото, история и статистика удалятся навсегда.')) {
        localStorage.removeItem('insta_sim_state');
@@ -169,34 +179,30 @@ async function resetProgress() {
 
 // --- 5. РЕНДЕР КОНТЕНТА ---
 async function renderGrid() {
-   // Жесткая фильтрация: Reels только в табе Reels, остальное в Постах
    const items = state.posts.filter(p => {
+       if (currentGridTab === 'archive') return p.archived === true;
+       if (p.archived === true) return false;
        if (currentGridTab === 'reels') return p.type === 'reel';
        return p.type === 'post' || p.type === 'photo' || p.type === 'video';
    }).reverse();
 
-   // Счетчик постов (без учета сторис)
-   document.getElementById('stat-posts').innerText = state.posts.filter(p => p.type !== 'story').length;
+   // Счетчик постов (без архива и сторис)
+   document.getElementById('stat-posts').innerText = state.posts.filter(p => p.type !== 'story' && !p.archived).length;
 
    const fragment = document.createDocumentFragment();
 
    for (const item of items) {
        const src = await getMediaFile(item.id);
-       if (!src) continue; // Защита от битых файлов
+       if (!src) continue;
 
        const stats = calculateLiveStats(item);
-      
        const div = document.createElement('div');
        div.className = `feed-item ${currentGridTab === 'reels' ? 'reel' : 'square'}`;
        div.onclick = () => openViewer(item, src);
       
        const isVideo = src.startsWith('data:video');
        if (isVideo) {
-           div.innerHTML = `
-               <video src="${src}" muted></video>
-               <div class="feed-icon" style="display:flex; align-items:center;">${ICO_PLAY}</div>
-               <div class="grid-views-overlay" id="grid-views-${item.id}" style="display:flex; align-items:center; gap:4px;">${ICO_PLAY} ${formatNum(stats.views)}</div>
-           `;
+           div.innerHTML = `<video src="${src}" muted></video><div class="feed-icon" style="display:flex; align-items:center;">${ICO_PLAY}</div><div class="grid-views-overlay" id="grid-views-${item.id}" style="display:flex; align-items:center; gap:4px;">${ICO_PLAY} ${formatNum(stats.views)}</div>`;
        } else {
            div.innerHTML = `<img src="${src}">`;
        }
@@ -210,7 +216,7 @@ async function renderGrid() {
 
 function updateGridViews() {
    state.posts.forEach(p => {
-       if (p.type === 'video' || p.type === 'reel') {
+       if ((p.type === 'video' || p.type === 'reel') && !p.archived) {
            const el = document.getElementById(`grid-views-${p.id}`);
            if (el) {
                const s = calculateLiveStats(p);
@@ -221,23 +227,20 @@ function updateGridViews() {
 }
 
 async function renderStories() {
-   const activeStories = state.posts.filter(p => p.type === 'story' && (Date.now() - p.timestamp) < 300000);
+   const activeStories = state.posts.filter(p => p.type === 'story' && (Date.now() - p.timestamp) < 300000 && !p.archived);
    const fragment = document.createDocumentFragment();
 
    for (const story of activeStories) {
        const src = await getMediaFile(story.id);
        if (!src) continue;
-
        const div = document.createElement('div');
        div.className = 'story-circle';
        div.onclick = () => openViewer(story, src);
        div.innerHTML = src.startsWith('data:video') ? `<video src="${src}" muted></video>` : `<img src="${src}">`;
        fragment.appendChild(div);
    }
-
    const bar = document.getElementById('stories-bar');
-   bar.innerHTML = '';
-   bar.appendChild(fragment);
+   bar.innerHTML = ''; bar.appendChild(fragment);
 }
 
 function renderStatsPage() {
@@ -264,13 +267,52 @@ function renderStatsPage() {
    document.getElementById('stat-24-minus').innerText = formatNum(minus24);
 }
 
-// --- 6. ВЬЮВЕР И ЗАГРУЗКА ---
+// --- 6. PUSH-УВЕДОМЛЕНИЯ ---
+function showToast(message, icon = '') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerHTML = `<span style="display:flex;align-items:center;color:var(--accent);">${icon}</span> <span>${message}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => { if(toast.parentElement) toast.remove(); }, 3800);
+}
+
+// --- 7. ВЬЮВЕР, МЕНЮ, ЗАГРУЗКА ---
 function openAddModal() { document.getElementById('modal-add').classList.remove('hidden'); }
 function closeModals() {
    document.getElementById('modal-add').classList.add('hidden');
    document.getElementById('modal-viewer').classList.add('hidden');
-   document.getElementById('viewer-media').innerHTML = '';
+   document.getElementById('post-action-menu').classList.add('hidden');
+   document.getElementById('viewer-media').innerHTML = '<div id="heart-anim" class="heart-overlay hidden"><svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></div>';
    clearTimeout(window.storyTimer);
+}
+
+// Открытие меню поста
+function openPostMenu() { document.getElementById('post-action-menu').classList.remove('hidden'); }
+function closePostMenu() { document.getElementById('post-action-menu').classList.add('hidden'); }
+
+// Архивация
+function toggleArchive() {
+    if(currentViewItem) {
+        currentViewItem.archived = !currentViewItem.archived;
+        saveStateLocally();
+        closeModals();
+        renderGrid();
+        showToast(currentViewItem.archived ? 'Перемещено в архив' : 'Восстановлено в профиле', ICO_SHARE);
+    }
+}
+
+// Полное удаление
+async function deletePost() {
+    if(currentViewItem && confirm('Точно удалить этот пост навсегда?')) {
+        state.posts = state.posts.filter(p => p.id !== currentViewItem.id);
+        await deleteMediaFile(currentViewItem.id);
+        saveStateLocally();
+        closeModals();
+        renderGrid();
+        renderStories();
+        showToast('Публикация удалена', '');
+    }
 }
 
 async function handleUpload(e, type) {
@@ -280,26 +322,13 @@ async function handleUpload(e, type) {
    reader.onload = async (event) => {
        const id = 'media_' + Date.now();
        await saveMediaFile(id, event.target.result);
-      
        let actualType = type;
-       // Если заливаем Пост, но это видеофайл — ставим тип video
        if(type === 'post' && file.type.startsWith('video/')) actualType = 'video';
-
-       state.posts.push({ id, type: actualType, timestamp: Date.now(), myComments: [] });
+       state.posts.push({ id, type: actualType, timestamp: Date.now(), myComments: [], extraLikes: 0, archived: false });
        saveStateLocally();
-      
        closeModals();
-      
-       if (type === 'story') {
-           renderStories();
-       } else {
-           // Автоматически открываем нужную вкладку
-           setGridTab(actualType === 'reel' ? 'reels' : 'posts');
-       }
-      
-       if (!document.getElementById('view-profile').classList.contains('active')) {
-           switchTab('profile');
-       }
+       if (type === 'story') renderStories(); else setGridTab(actualType === 'reel' ? 'reels' : 'posts');
+       if (!document.getElementById('view-profile').classList.contains('active')) switchTab('profile');
    };
    reader.readAsDataURL(file);
 }
@@ -323,15 +352,48 @@ function openViewer(item, src) {
    const commentBox = document.getElementById('my-comment-box');
    const storyProg = document.getElementById('story-progress');
    const storyBar = document.getElementById('story-bar');
+   const btnArchive = document.getElementById('btn-archive');
   
    viewer.classList.remove('hidden');
+   document.getElementById('post-action-menu').classList.add('hidden');
+   
+   // Обновление кнопки архива
+   btnArchive.innerText = item.archived ? "Восстановить в профиль" : "Скрыть в Архив";
+
    const isVideo = src.startsWith('data:video');
-   mediaBox.innerHTML = isVideo ? `<video src="${src}" autoplay loop controls></video>` : `<img src="${src}">`;
+   const mediaEl = isVideo ? `<video src="${src}" autoplay loop controls></video>` : `<img src="${src}">`;
+   
+   // Сохраняем сердце, заменяем только медиа
+   mediaBox.innerHTML = mediaEl + '<div id="heart-anim" class="heart-overlay"><svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></div>';
+
+   // --- ЛОГИКА ДВОЙНОГО ТАПА (Double Tap) ---
+   mediaBox.onclick = (e) => {
+       const currentTime = new Date().getTime();
+       const tapLength = currentTime - lastTapTime;
+       if (tapLength < 300 && tapLength > 0) {
+           // Триггер двойного тапа
+           const heartAnim = document.getElementById('heart-anim');
+           heartAnim.classList.remove('animate');
+           void heartAnim.offsetWidth; // Рестарт анимации
+           heartAnim.classList.add('animate');
+           
+           if(item.type !== 'story') {
+               item.extraLikes += 1;
+               saveStateLocally();
+               const newStats = calculateLiveStats(item);
+               document.getElementById('viewer-like-count').innerText = formatNum(newStats.likes);
+           }
+           e.preventDefault();
+       }
+       lastTapTime = currentTime;
+   };
+
    const stats = calculateLiveStats(item);
 
    if (item.type === 'story') {
        storyProg.classList.remove('hidden');
        commentBox.classList.add('hidden');
+       document.getElementById('viewer-menu-toggle').classList.add('hidden');
        infoBox.innerHTML = `<div style="display:flex; align-items:center; gap:6px; font-weight: 600;">${ICO_EYE} ${formatNum(stats.views)} просмотров</div>`;
        storyBar.style.transition = 'none'; storyBar.style.width = '0%';
        setTimeout(() => { storyBar.style.transition = 'width 5s linear'; storyBar.style.width = '100%'; }, 50);
@@ -339,6 +401,7 @@ function openViewer(item, src) {
    } else {
        storyProg.classList.add('hidden');
        commentBox.classList.remove('hidden');
+       document.getElementById('viewer-menu-toggle').classList.remove('hidden');
       
        let commentsHTML = '';
        if(item.myComments) item.myComments.forEach(c => commentsHTML += `<div style="margin-bottom:8px"><b>@${state.username}</b> <span style="color:#eee">${c}</span></div>`);
@@ -346,21 +409,19 @@ function openViewer(item, src) {
        const commentsToShow = Math.min(stats.comments, 15);
        for(let i=0; i<commentsToShow; i++) {
            let u, vBadge = '';
-          
            if (Math.random() < 0.1) {
                u = STAR_USERS[(i + item.timestamp) % STAR_USERS.length];
                vBadge = `<span class="verified-badge" style="width:12px; height:12px;"></span>`;
            } else {
                u = REGULAR_USERS[(i + item.timestamp) % REGULAR_USERS.length];
            }
-          
            const t = FAKE_COMMENTS[(i + item.timestamp) % FAKE_COMMENTS.length];
            commentsHTML += `<div style="margin-bottom:8px; color:#aaa; line-height: 1.3;"><b>${u}</b>${vBadge} <span style="color:#eee">${t}</span></div>`;
        }
 
        infoBox.innerHTML = `
            <div style="margin-bottom:15px; display:flex; gap:18px; align-items:center;">
-               <span style="display:flex; align-items:center; gap:5px; font-weight:600;">${ICO_HEART} ${formatNum(stats.likes)}</span>
+               <span style="display:flex; align-items:center; gap:5px; font-weight:600;">${ICO_HEART} <span id="viewer-like-count">${formatNum(stats.likes)}</span></span>
                <span style="display:flex; align-items:center; gap:5px; font-weight:600;">${ICO_COMMENT} ${formatNum(stats.comments)}</span>
                <span style="display:flex; align-items:center; gap:5px; font-weight:600;">${ICO_SHARE} ${formatNum(stats.reposts)}</span>
                ${(item.type === 'reel' || item.type === 'video') ? `<span style="display:flex; align-items:center; gap:5px; font-weight:600;">${ICO_EYE} ${formatNum(stats.views)}</span>` : ''}
@@ -383,7 +444,7 @@ function addMyComment() {
    }
 }
 
-// --- 7. ЖИВОЙ ЦИКЛ ---
+// --- 8. ЖИВОЙ ЦИКЛ (События и Уведомления) ---
 setInterval(() => {
    let hasChanges = false;
 
@@ -399,6 +460,8 @@ setInterval(() => {
            diff = -(Math.floor(Math.random() * 2 * tierMult) + 1);
        } else {
            diff = Math.floor(Math.random() * 4 * tierMult) + 1;
+           // Триггер уведомления о подписке (5% шанс при росте)
+           if (Math.random() < 0.05) showToast(`+${diff} новых подписчиков`, '👤');
        }
 
        if (currentF + diff < 0) diff = -currentF;
@@ -409,6 +472,12 @@ setInterval(() => {
            hasChanges = true;
        }
    }
+   
+   // Триггер случайного уведомления от звезд (3% шанс)
+   if (Math.random() < 0.03 && state.posts.length > 0) {
+       const star = STAR_USERS[Math.floor(Math.random() * STAR_USERS.length)];
+       showToast(`@${star} оценил(а) вашу публикацию`, ICO_HEART);
+   }
 
    const dayAgo = Date.now() - (24 * 60 * 60 * 1000);
    if (state.history.length > 0 && state.history[0].ts < dayAgo) {
@@ -416,23 +485,12 @@ setInterval(() => {
        hasChanges = true;
    }
 
-   if (hasChanges) {
-       saveStateLocally();
-       updateLiveNumbers();
-   }
-
+   if (hasChanges) { saveStateLocally(); updateLiveNumbers(); }
    renderStatsPage();
    renderStories();
    updateGridViews();
 }, 2000);
 
-// Автосохранение при редактировании имени и описания
-document.getElementById('bio-name').addEventListener('input', (e) => {
-   state.bioName = e.target.innerText;
-   saveStateLocally();
-});
-document.getElementById('bio-text').addEventListener('input', (e) => {
-   state.bioText = e.target.innerText;
-   saveStateLocally();
-});
+document.getElementById('bio-name').addEventListener('input', (e) => { state.bioName = e.target.innerText; saveStateLocally(); });
+document.getElementById('bio-text').addEventListener('input', (e) => { state.bioText = e.target.innerText; saveStateLocally(); });
 updateFullUI();

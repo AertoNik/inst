@@ -9,17 +9,20 @@
 </head>
 <body>
     <div class="app-container">
+        <!-- Контейнер для Push-уведомлений -->
+        <div id="toast-container" class="toast-container"></div>
+
         <!-- ВЕРХНЯЯ ПАНЕЛЬ -->
         <header class="top-bar">
             <button class="icon-btn" onclick="switchTab('settings')">
-                <svg class="nav-svg" viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18" stroke="currentColor" stroke-linecap="round"/></svg>
+                <svg class="nav-svg" viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
             </button>
             <h1 class="username-title" id="header-username">
                 <span id="header-name-text">@artnik_film</span>
                 <span id="badge-header" class="verified-badge hidden"></span>
             </h1>
             <button class="icon-btn" onclick="openAddModal()">
-                <svg class="nav-svg" viewBox="0 0 24 24"><path d="M12 2v20m10-10H2" stroke="currentColor" stroke-linecap="round"/></svg>
+                <svg class="nav-svg" viewBox="0 0 24 24"><path d="M12 2v20m10-10H2"/></svg>
             </button>
         </header>
 
@@ -40,7 +43,6 @@
                     </div>
                 </div>
                 
-                <!-- Био теперь можно редактировать по клику -->
                 <div class="profile-bio">
                     <h2 id="bio-name-container">
                         <span id="bio-name" contenteditable="true" style="outline: none;">Твое Имя</span>
@@ -54,16 +56,15 @@
                     <button class="btn">Поделиться</button>
                 </div>
 
-                <!-- Блок Сторис -->
                 <div class="stories-bar" id="stories-bar"></div>
 
-                <!-- Табы сетки -->
+                <!-- Табы сетки (Добавлен Архив) -->
                 <div class="grid-tabs">
                     <button class="grid-tab active" id="tab-btn-posts" onclick="setGridTab('posts')">▦ Посты</button>
                     <button class="grid-tab" id="tab-btn-reels" onclick="setGridTab('reels')">▶ Reels</button>
+                    <button class="grid-tab" id="tab-btn-archive" onclick="setGridTab('archive')" style="font-size: 20px;">📦</button>
                 </div>
 
-                <!-- Сетка фото/видео -->
                 <div class="feed-grid" id="profile-grid"></div>
             </div>
 
@@ -92,70 +93,59 @@
             <div id="view-settings" class="view">
                 <div class="pad-15">
                     <h2>Настройки</h2>
-                    <div class="input-group">
-                        <label>Официальный аккаунт</label>
-                        <button class="btn" onclick="toggleVerification()" id="btn-verify">Включить галочку верификации</button>
-                    </div>
-                    <div class="input-group">
-                        <label>Тема оформления</label>
-                        <button class="btn" onclick="toggleTheme()">Переключить Dark/Light</button>
-                    </div>
-                    <div class="input-group">
-                        <label>Никнейм</label>
-                        <input type="text" id="inp-username" class="input-field">
-                    </div>
-                    <div class="input-group">
-                        <label>Подписчики (Для алгоритма охватов)</label>
-                        <input type="number" id="inp-followers" class="input-field">
-                    </div>
+                    <div class="input-group"><label>Официальный аккаунт</label><button class="btn" onclick="toggleVerification()" id="btn-verify">Включить галочку верификации</button></div>
+                    <div class="input-group"><label>Тема оформления</label><button class="btn" onclick="toggleTheme()">Переключить Dark/Light</button></div>
+                    <div class="input-group"><label>Никнейм</label><input type="text" id="inp-username" class="input-field"></div>
+                    <div class="input-group"><label>Подписчики</label><input type="number" id="inp-followers" class="input-field"></div>
                     <button class="btn primary-btn" onclick="saveSettings()">Сохранить профиль</button>
-                    
                     <hr class="divider" style="border: none; border-top: 1px solid #333; margin: 20px 0;">
                     <button class="btn danger-btn" onclick="resetProgress()" style="background: #3a1111; color: #ff4d4d; border: 1px solid #ff4d4d; width: 100%;">⚠️ Сбросить весь прогресс</button>
                 </div>
             </div>
         </main>
 
-        <!-- НИЖНЯЯ НАВИГАЦИЯ (SVG ИКОНКИ) -->
+        <!-- НИЖНЯЯ НАВИГАЦИЯ -->
         <nav class="bottom-nav">
-            <button class="nav-btn" onclick="switchTab('profile')">
-                <svg class="nav-svg filled" viewBox="0 0 24 24"><path d="M9.005 16.545a2.997 2.997 0 012.997-2.997h0a2.997 2.997 0 012.997 2.997v4.453h4.043v-8.77l-7.04-5.836-7.04 5.836v8.77h4.043v-4.453z"/></svg>
-            </button>
-            <button class="nav-btn">
-                <svg class="nav-svg" viewBox="0 0 24 24"><path d="M19 10.5A8.5 8.5 0 1110.5 2a8.5 8.5 0 018.5 8.5z"/><line x1="16.5" y1="16.5" x2="21.5" y2="21.5"/></svg>
-            </button>
-            <button class="nav-btn" onclick="openAddModal()">
-                <svg class="nav-svg" viewBox="0 0 24 24" style="stroke: var(--text); fill: none;"><path d="M12 2v20m10-10H2"/></svg>
-            </button>
-            <button class="nav-btn" onclick="switchTab('stats')">
-                <svg class="nav-svg" viewBox="0 0 24 24"><path d="M3 3v18h18M7 16v-4m4 4v-8m4 8V6"/></svg>
-            </button>
-            <button class="nav-btn" onclick="switchTab('profile')">
-                <svg class="nav-svg" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21v-2a4 4 0 014-4h8a4 4 0 014 4v2"/></svg>
-            </button>
+            <button class="nav-btn" onclick="switchTab('profile')"><svg class="nav-svg filled" viewBox="0 0 24 24"><path d="M9.005 16.545a2.997 2.997 0 012.997-2.997h0a2.997 2.997 0 012.997 2.997v4.453h4.043v-8.77l-7.04-5.836-7.04 5.836v8.77h4.043v-4.453z"/></svg></button>
+            <button class="nav-btn"><svg class="nav-svg" viewBox="0 0 24 24"><path d="M19 10.5A8.5 8.5 0 1110.5 2a8.5 8.5 0 018.5 8.5z"/><line x1="16.5" y1="16.5" x2="21.5" y2="21.5"/></svg></button>
+            <button class="nav-btn" onclick="openAddModal()"><svg class="nav-svg" viewBox="0 0 24 24" style="stroke: var(--text); fill: none;"><path d="M12 2v20m10-10H2"/></svg></button>
+            <button class="nav-btn" onclick="switchTab('stats')"><svg class="nav-svg" viewBox="0 0 24 24"><path d="M3 3v18h18M7 16v-4m4 4v-8m4 8V6"/></svg></button>
+            <button class="nav-btn" onclick="switchTab('profile')"><svg class="nav-svg" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21v-2a4 4 0 014-4h8a4 4 0 014 4v2"/></svg></button>
         </nav>
 
-        <!-- МОДАЛКИ (Без изменений) -->
+        <!-- МОДАЛКА ДОБАВЛЕНИЯ -->
         <div id="modal-add" class="modal hidden">
             <div class="modal-content slide-up">
-                <div class="modal-header">
-                    <h3>Создать</h3>
-                    <button class="close-btn" onclick="closeModals()">&times;</button>
-                </div>
+                <div class="modal-header"><h3>Создать</h3><button class="close-btn" onclick="closeModals()">&times;</button></div>
                 <label class="btn add-btn">Добавить Пост (Фото/Видео) <input type="file" id="upload-post" accept="image/*,video/*" hidden></label>
                 <label class="btn add-btn">Добавить Reels (Видео) <input type="file" id="upload-reel" accept="video/*" hidden></label>
                 <label class="btn add-btn story-btn">Добавить Историю <input type="file" id="upload-story" accept="image/*,video/*" hidden></label>
             </div>
         </div>
 
+        <!-- ПОЛНОЭКРАННЫЙ ПРОСМОТР -->
         <div id="modal-viewer" class="viewer hidden">
             <div id="story-progress" class="story-progress hidden"><div id="story-bar"></div></div>
+            <button class="viewer-menu-btn" id="viewer-menu-toggle" onclick="openPostMenu()">⋮</button>
             <button class="close-viewer-btn" onclick="closeModals()">&times;</button>
-            <div id="viewer-media" class="viewer-media"></div>
+            
+            <div id="viewer-media" class="viewer-media">
+                <div id="heart-anim" class="heart-overlay hidden">
+                    <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                </div>
+            </div>
+            
             <div id="viewer-info" class="viewer-info"></div>
             <div id="my-comment-box" class="comment-box hidden">
                 <input type="text" id="my-comment-input" placeholder="Добавить комментарий...">
                 <button onclick="addMyComment()">Отправить</button>
+            </div>
+
+            <!-- Меню действий поста -->
+            <div id="post-action-menu" class="post-action-menu hidden">
+                <button id="btn-archive" onclick="toggleArchive()">В архив</button>
+                <button onclick="deletePost()" style="color: #ff4d4d; font-weight: bold;">Удалить пост</button>
+                <button onclick="closePostMenu()">Отмена</button>
             </div>
         </div>
 
