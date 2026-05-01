@@ -85,7 +85,8 @@ function calculateLiveStats(item) {
 
    const growth = Math.log10(ageMinutes * 2 + 1);
 
-   if (item.type === 'post') {
+   // Добавили поддержку старых фото (item.type === 'photo')
+   if (item.type === 'post' || item.type === 'photo') {
        likes = Math.floor(f * 0.15 * growth);
        comments = Math.floor(likes * 0.05);
        reposts = Math.floor(likes * 0.02);
@@ -111,7 +112,6 @@ function updateFullUI() {
    document.getElementById('inp-username').value = state.username;
    document.getElementById('inp-followers').value = state.followers;
 
-   // Галочка
    const badges = [document.getElementById('badge-header'), document.getElementById('badge-bio')];
    const btnVerify = document.getElementById('btn-verify');
    if (state.verified) {
@@ -169,13 +169,21 @@ async function resetProgress() {
 
 // --- 5. РЕНДЕР КОНТЕНТА ---
 async function renderGrid() {
-   const items = state.posts.filter(p => currentGridTab === 'reels' ? p.type === 'reel' : p.type === 'post').reverse();
+   // Жесткая фильтрация: Reels только в табе Reels, остальное в Постах
+   const items = state.posts.filter(p => {
+       if (currentGridTab === 'reels') return p.type === 'reel';
+       return p.type === 'post' || p.type === 'photo' || p.type === 'video';
+   }).reverse();
+
+   // Счетчик постов (без учета сторис)
    document.getElementById('stat-posts').innerText = state.posts.filter(p => p.type !== 'story').length;
 
    const fragment = document.createDocumentFragment();
 
    for (const item of items) {
        const src = await getMediaFile(item.id);
+       if (!src) continue; // Защита от битых файлов
+
        const stats = calculateLiveStats(item);
       
        const div = document.createElement('div');
@@ -218,6 +226,8 @@ async function renderStories() {
 
    for (const story of activeStories) {
        const src = await getMediaFile(story.id);
+       if (!src) continue;
+
        const div = document.createElement('div');
        div.className = 'story-circle';
        div.onclick = () => openViewer(story, src);
@@ -272,6 +282,7 @@ async function handleUpload(e, type) {
        await saveMediaFile(id, event.target.result);
       
        let actualType = type;
+       // Если заливаем Пост, но это видеофайл — ставим тип video
        if(type === 'post' && file.type.startsWith('video/')) actualType = 'video';
 
        state.posts.push({ id, type: actualType, timestamp: Date.now(), myComments: [] });
@@ -282,7 +293,8 @@ async function handleUpload(e, type) {
        if (type === 'story') {
            renderStories();
        } else {
-           renderGrid();
+           // Автоматически открываем нужную вкладку
+           setGridTab(actualType === 'reel' ? 'reels' : 'posts');
        }
       
        if (!document.getElementById('view-profile').classList.contains('active')) {
@@ -371,7 +383,7 @@ function addMyComment() {
    }
 }
 
-// --- 7. ЖИВОЙ ЦИКЛ (Шанс роста 85%, Отписка 15%) ---
+// --- 7. ЖИВОЙ ЦИКЛ ---
 setInterval(() => {
    let hasChanges = false;
 
