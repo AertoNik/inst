@@ -32,7 +32,8 @@ async function clearDB() {
 const defaultState = {
     theme: 'dark',
     username: 'artnik_film',
-    name: 'Artem',
+    bioName: 'Твое Имя',
+    bioText: 'Режиссер / Креатор\nARCHETYPE System',
     verified: false,
     followers: 1420,
     following: 35,
@@ -44,6 +45,8 @@ const defaultState = {
 let state = JSON.parse(localStorage.getItem('insta_sim_state')) || defaultState;
 if (!state.history) state.history = []; 
 if (state.verified === undefined) state.verified = false;
+if (!state.bioName) state.bioName = defaultState.bioName;
+if (!state.bioText) state.bioText = defaultState.bioText;
 
 let currentGridTab = 'posts';
 let currentViewItem = null;
@@ -51,16 +54,18 @@ let currentViewItem = null;
 function saveStateLocally() { localStorage.setItem('insta_sim_state', JSON.stringify(state)); }
 
 // --- 3. ДВИЖОК СИМУЛЯЦИИ РОСТА И ПАДЕНИЯ ---
-// Добавили звезд и инфлюенсеров
-const FAKE_USERS = ["mrbeast", "zendaya", "cristiano", "tomholland2013", "leomessi", "dualipa", "snoopdogg", "elonmusk", "gordongram", "billieeilish", "cyber.neo", "detective_sys", "warden_official"];
-const FAKE_COMMENTS = ["This is insane! 🔥", "Broooo", "Атмосферно!", "Где это?", "Топ", "Очень красиво 🎬", "bro this is good", "love this", "Шедевр!", "Идеальный свет", "Вайбово", "Keep it up! 👏", "Amazing work"];
+// Разделили на звезд (редкие) и обычных пользователей
+const STAR_USERS = ["mrbeast", "zendaya", "cristiano", "tomholland2013", "leomessi", "elonmusk"];
+const REGULAR_USERS = ["cyber.neo", "detective_sys", "warden_official", "pastry.pro", "night_owl", "shadow.walker", "neon_dreamer", "art.lover99", "cinematic.vibe", "urban.explore", "user_19924"];
+const FAKE_COMMENTS = ["This is insane! 🔥", "Broooo", "Атмосферно!", "Где это?", "Топ", "Очень красиво 🎬", "bro this is good", "love this", "Шедевр!", "Идеальный свет", "Вайбово", "Keep it up! 👏", "Amazing work", "Ну это развал 🤯", "Научи так же", "Как всегда на высоте"];
 
-// Форматирование чисел (10k, 1.2M)
 function formatNum(num) {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
     if (num >= 10000) return (num / 1000).toFixed(1) + 'k';
     return num.toLocaleString('ru-RU');
 }
+
+// ... остальной код calculateLiveStats остается без изменений ...
 
 function calculateLiveStats(item) {
     const ageMinutes = Math.max((Date.now() - item.timestamp) / 60000, 0);
@@ -97,7 +102,8 @@ function updateFullUI() {
     document.getElementById('header-name-text').innerText = `@${state.username}`;
     document.getElementById('stat-followers').innerText = formatNum(state.followers);
     document.getElementById('stat-following').innerText = state.following;
-    
+    document.getElementById('bio-name').innerText = state.bioName;
+    document.getElementById('bio-text').innerText = state.bioText;
     document.getElementById('inp-username').value = state.username;
     document.getElementById('inp-followers').value = state.followers;
 
@@ -305,12 +311,23 @@ function openViewer(item, src) {
         commentBox.classList.remove('hidden');
         
         let commentsHTML = '';
-        if(item.myComments) item.myComments.forEach(c => commentsHTML += `<div style="margin-bottom:5px"><b>@${state.username}</b> ${c}</div>`);
-        for(let i=0; i<Math.min(stats.comments, 6); i++) {
-            const u = FAKE_USERS[(i + item.timestamp) % FAKE_USERS.length];
+        if(item.myComments) item.myComments.forEach(c => commentsHTML += `<div style="margin-bottom:8px"><b>@${state.username}</b> <span style="color:#eee">${c}</span></div>`);
+        
+        // Показываем до 15 комментариев, чтобы можно было читать
+        const commentsToShow = Math.min(stats.comments, 15);
+        for(let i=0; i<commentsToShow; i++) {
+            let u, vBadge = '';
+            
+            // Шанс 10% что это звезда с галочкой
+            if (Math.random() < 0.1) {
+                u = STAR_USERS[(i + item.timestamp) % STAR_USERS.length];
+                vBadge = `<span class="verified-badge" style="width:12px; height:12px;"></span>`;
+            } else {
+                u = REGULAR_USERS[(i + item.timestamp) % REGULAR_USERS.length];
+            }
+            
             const t = FAKE_COMMENTS[(i + item.timestamp) % FAKE_COMMENTS.length];
-            const vBadge = ['mrbeast', 'zendaya', 'cristiano', 'tomholland2013', 'leomessi', 'elonmusk'].includes(u) ? `<span class="verified-badge" style="width:12px; height:12px;"></span>` : '';
-            commentsHTML += `<div style="margin-bottom:5px; color:#aaa"><b>${u}</b>${vBadge} ${t}</div>`;
+            commentsHTML += `<div style="margin-bottom:8px; color:#aaa; line-height: 1.3;"><b>${u}</b>${vBadge} <span style="color:#eee">${t}</span></div>`;
         }
 
         infoBox.innerHTML = `
@@ -384,5 +401,13 @@ setInterval(() => {
     renderStories();
     updateGridViews(); // Обновление счетчиков прямо на обложках
 }, 2000);
-
+// Автосохранение при редактировании имени и описания
+document.getElementById('bio-name').addEventListener('input', (e) => { 
+    state.bioName = e.target.innerText; 
+    saveStateLocally(); 
+});
+document.getElementById('bio-text').addEventListener('input', (e) => { 
+    state.bioText = e.target.innerText; 
+    saveStateLocally(); 
+});
 updateFullUI();

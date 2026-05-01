@@ -11,12 +11,16 @@
     <div class="app-container">
         <!-- ВЕРХНЯЯ ПАНЕЛЬ -->
         <header class="top-bar">
-            <button class="icon-btn" onclick="switchTab('settings')">≡</button>
+            <button class="icon-btn" onclick="switchTab('settings')">
+                <svg class="nav-svg" viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18" stroke="currentColor" stroke-linecap="round"/></svg>
+            </button>
             <h1 class="username-title" id="header-username">
                 <span id="header-name-text">@artnik_film</span>
                 <span id="badge-header" class="verified-badge hidden"></span>
             </h1>
-            <button class="icon-btn" onclick="openAddModal()">+</button>
+            <button class="icon-btn" onclick="openAddModal()">
+                <svg class="nav-svg" viewBox="0 0 24 24"><path d="M12 2v20m10-10H2" stroke="currentColor" stroke-linecap="round"/></svg>
+            </button>
         </header>
 
         <!-- ОСНОВНОЙ КОНТЕНТ -->
@@ -35,16 +39,18 @@
                         <div class="stat-item"><span id="stat-following">35</span><small>Подписки</small></div>
                     </div>
                 </div>
+                
+                <!-- Био теперь можно редактировать по клику -->
                 <div class="profile-bio">
                     <h2 id="bio-name-container">
-                        <span id="bio-name">Твое Имя</span>
+                        <span id="bio-name" contenteditable="true" style="outline: none;">Твое Имя</span>
                         <span id="badge-bio" class="verified-badge hidden"></span>
                     </h2>
-                    <p id="bio-text">Режиссер / Креатор<br>ARCHETYPE System</p>
-                    <a href="#" id="bio-link">ссылка.ком</a>
+                    <p id="bio-text" contenteditable="true" style="outline: none;">Режиссер / Креатор<br>ARCHETYPE System</p>
                 </div>
+                
                 <div class="action-buttons">
-                    <button class="btn" onclick="switchTab('settings')">Редактировать</button>
+                    <button class="btn" onclick="switchTab('settings')">Настройки</button>
                     <button class="btn">Поделиться</button>
                 </div>
 
@@ -110,16 +116,26 @@
             </div>
         </main>
 
-        <!-- НИЖНЯЯ НАВИГАЦИЯ -->
+        <!-- НИЖНЯЯ НАВИГАЦИЯ (SVG ИКОНКИ) -->
         <nav class="bottom-nav">
-            <button class="nav-btn" onclick="switchTab('profile')">🏠</button>
-            <button class="nav-btn">🔍</button>
-            <button class="nav-btn" onclick="openAddModal()">➕</button>
-            <button class="nav-btn" onclick="switchTab('stats')">📊</button>
-            <button class="nav-btn" onclick="switchTab('profile')">👤</button>
+            <button class="nav-btn" onclick="switchTab('profile')">
+                <svg class="nav-svg filled" viewBox="0 0 24 24"><path d="M9.005 16.545a2.997 2.997 0 012.997-2.997h0a2.997 2.997 0 012.997 2.997v4.453h4.043v-8.77l-7.04-5.836-7.04 5.836v8.77h4.043v-4.453z"/></svg>
+            </button>
+            <button class="nav-btn">
+                <svg class="nav-svg" viewBox="0 0 24 24"><path d="M19 10.5A8.5 8.5 0 1110.5 2a8.5 8.5 0 018.5 8.5z"/><line x1="16.5" y1="16.5" x2="21.5" y2="21.5"/></svg>
+            </button>
+            <button class="nav-btn" onclick="openAddModal()">
+                <svg class="nav-svg" viewBox="0 0 24 24" style="stroke: var(--text); fill: none;"><path d="M12 2v20m10-10H2"/></svg>
+            </button>
+            <button class="nav-btn" onclick="switchTab('stats')">
+                <svg class="nav-svg" viewBox="0 0 24 24"><path d="M3 3v18h18M7 16v-4m4 4v-8m4 8V6"/></svg>
+            </button>
+            <button class="nav-btn" onclick="switchTab('profile')">
+                <svg class="nav-svg" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21v-2a4 4 0 014-4h8a4 4 0 014 4v2"/></svg>
+            </button>
         </nav>
 
-        <!-- МОДАЛКА ДОБАВЛЕНИЯ -->
+        <!-- МОДАЛКИ (Без изменений) -->
         <div id="modal-add" class="modal hidden">
             <div class="modal-content slide-up">
                 <div class="modal-header">
@@ -132,7 +148,6 @@
             </div>
         </div>
 
-        <!-- ПОЛНОЭКРАННЫЙ ПРОСМОТР -->
         <div id="modal-viewer" class="viewer hidden">
             <div id="story-progress" class="story-progress hidden"><div id="story-bar"></div></div>
             <button class="close-viewer-btn" onclick="closeModals()">&times;</button>
