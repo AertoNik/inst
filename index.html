@@ -8,101 +8,133 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <!-- Блок Историй (Stories) -->
-        <div class="stories-container" id="stories-feed">
-            <div class="story" id="add-story-btn">
-                <div class="story-ring add-ring">
-                    <img id="story-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23555'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E" alt="Avatar">
-                    <div class="story-add-icon">+</div>
-                </div>
-                <span class="story-name">Твоя история</span>
-                <input type="file" id="story-upload" accept="image/*" style="display: none;">
+    <!-- Главный контейнер в виде экрана телефона -->
+    <div class="app-container">
+        
+        <!-- ================= ГЛАВНАЯ ЛЕНТА (HOME) ================= -->
+        <div id="view-home" class="view hidden">
+            <div class="top-header">
+                <div class="logo-text">Simulator</div>
             </div>
-            <!-- Сюда будут добавляться созданные истории -->
+            
+            <!-- Секция Сторис на главной -->
+            <div class="stories-container" id="home-stories">
+                <div class="story" id="add-story-btn">
+                    <div class="story-ring add-ring">
+                        <img id="home-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23555'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E" alt="Avatar">
+                        <div class="story-add-icon">+</div>
+                    </div>
+                    <span class="story-name">Ваша история</span>
+                    <input type="file" id="story-upload" accept="image/*" style="display: none;">
+                </div>
+                <!-- Активные сторис будут здесь -->
+            </div>
+
+            <!-- Лента чужих постов -->
+            <div class="fake-feed" id="fake-feed">
+                <!-- Генерируется через JS -->
+            </div>
         </div>
 
-        <header class="profile-header">
-            <div class="avatar-section">
-                <div class="avatar-wrapper" id="avatar-wrapper">
-                    <img id="avatar-image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23555'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E" alt="Avatar">
-                </div>
-                <input type="file" id="avatar-upload" accept="image/*" style="display: none;">
+        <!-- ================= ПРОФИЛЬ (PROFILE) ================= -->
+        <div id="view-profile" class="view active">
+            <div class="top-header">
+                <div class="header-icon">+</div>
+                <div class="username-title" id="header-username">@your_account</div>
+                <div class="header-icon" onclick="switchView('view-settings')">≡</div>
             </div>
 
-            <div class="profile-info">
-                <div class="username-row">
-                    <h1 class="username" contenteditable="true">@your_account</h1>
+            <div class="profile-header">
+                <div class="avatar-wrapper" id="avatar-wrapper">
+                    <img id="profile-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23555'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E" alt="Avatar">
+                    <input type="file" id="avatar-upload" accept="image/*" style="display: none;">
                 </div>
                 <div class="stats">
-                    <div class="stat-box">
-                        <span class="stat-number" id="posts-count">0</span>
-                        <span class="stat-label">публикаций</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-number" id="followers-count" contenteditable="true">1420</span>
-                        <span class="stat-label">подписчиков</span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-number" id="following-count" contenteditable="true">35</span>
-                        <span class="stat-label">подписок</span>
-                    </div>
+                    <div class="stat-box"><span class="stat-number" id="posts-count">0</span><span class="stat-label">публикации</span></div>
+                    <div class="stat-box"><span class="stat-number" id="followers-count" contenteditable="true">178</span><span class="stat-label">подписчики</span></div>
+                    <div class="stat-box"><span class="stat-number" id="following-count" contenteditable="true">48</span><span class="stat-label">друзей</span></div>
                 </div>
             </div>
-        </header>
 
-        <div class="profile-bio">
-            <div class="bio-name" contenteditable="true">Твое Имя</div>
-            <div class="bio-description" contenteditable="true">Режиссер / Креатор<br>Dark Mode Aesthetics 🎬</div>
+            <div class="profile-bio">
+                <div class="bio-name" contenteditable="true">Твое Имя</div>
+                <div class="bio-description" contenteditable="true">🍾 in the end I am always alone 🥂<br>ARCHETYPE System Active</div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="action-btn">Редактировать</button>
+                <button class="action-btn">Поделиться профилем</button>
+            </div>
+
+            <div class="highlights-container">
+                <div class="highlight">
+                    <div class="highlight-ring"><div class="add-highlight">+</div></div>
+                    <span class="highlight-name">Добавить</span>
+                </div>
+                <div class="highlight"><div class="highlight-ring" style="background:#333"></div><span class="highlight-name">THE WARDEN</span></div>
+            </div>
+
+            <div class="grid-tabs">
+                <div class="grid-tab active">▦</div>
+                <div class="grid-tab">▶</div>
+                <div class="grid-tab">👤</div>
+            </div>
+
+            <div class="controls" style="margin-top: 10px; text-align: center;">
+                <label for="image-upload" class="upload-link">Добавить фото в профиль</label>
+                <input type="file" id="image-upload" accept="image/*" style="display: none;">
+            </div>
+
+            <main class="feed-grid" id="profile-feed"></main>
         </div>
 
-        <div class="controls">
-            <label for="image-upload" class="upload-btn">Добавить Пост</label>
-            <label for="reels-upload" class="upload-btn">Добавить Reels</label>
-            <input type="file" id="image-upload" accept="image/*" style="display: none;">
-            <input type="file" id="reels-upload" accept="image/*,video/*" style="display: none;">
+        <!-- ================= НАСТРОЙКИ (SETTINGS) ================= -->
+        <div id="view-settings" class="view hidden">
+            <div class="top-header">
+                <div class="header-icon" onclick="switchView('view-profile')">←</div>
+                <div class="username-title">Настройки и статистика</div>
+                <div class="header-icon"></div>
+            </div>
+            
+            <div class="settings-list">
+                <div class="settings-item">
+                    <span>Тема оформления</span>
+                    <button id="theme-toggle" class="action-btn" style="width: auto; padding: 5px 15px;">Тёмная / Светлая</button>
+                </div>
+                
+                <div class="settings-item" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+                    <span style="font-weight: 600;">Статистика симулятора</span>
+                    <div class="stats-card">
+                        <div>Всего заработано лайков: <span id="total-likes-stat" style="color: var(--accent); font-weight: bold;">0</span></div>
+                        <div>Запусков системы: <span id="sessions-stat">1</span></div>
+                        <div>Активных Сторис: <span id="active-stories-stat">0</span></div>
+                    </div>
+                </div>
+
+                <div class="settings-item" style="margin-top: 40px; border-bottom: none; justify-content: center;">
+                    <button id="reset-btn" class="action-btn" style="background: #ff4d4d; color: white;">⚠️ СБРОСИТЬ ВЕСЬ ПРОГРЕСС</button>
+                </div>
+            </div>
         </div>
 
-        <div class="tabs">
-            <div class="tab active" data-tab="posts">ПУБЛИКАЦИИ</div>
-            <div class="tab" data-tab="reels">REELS</div>
-        </div>
-        
-        <main class="feed-grid" id="feed-posts"></main>
-        <main class="feed-grid reels-grid" id="feed-reels" style="display: none;"></main>
+        <!-- ================= НИЖНЕЕ МЕНЮ ================= -->
+        <nav class="bottom-nav">
+            <div class="nav-item" onclick="switchView('view-home')">🏠</div>
+            <div class="nav-item">🔍</div>
+            <div class="nav-item">➕</div>
+            <div class="nav-item">▶️</div>
+            <div class="nav-item" onclick="switchView('view-profile')">
+                <img id="nav-avatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23555'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E" alt="Nav">
+                <div class="nav-dot"></div>
+            </div>
+        </nav>
     </div>
 
-    <!-- Модальное окно постов/рилс -->
-    <div id="post-modal" class="modal">
-        <div class="modal-close" id="modal-close">&times;</div>
-        <div class="modal-content">
-            <div class="modal-image-container">
-                <img id="modal-image" src="" alt="Post">
-            </div>
-            <div class="modal-sidebar">
-                <div class="modal-header">
-                    <img id="modal-avatar" src="" alt="Avatar">
-                    <span id="modal-username" class="modal-user">@your_account</span>
-                </div>
-                <!-- Блок комментариев -->
-                <div class="modal-comments-area" id="modal-comments-list">
-                    <!-- Комментарии генерируются JS -->
-                </div>
-                <div class="modal-stats-live">
-                    <div class="reaction-row">
-                        <span class="icon">❤️ <span id="modal-likes">0</span></span>
-                        <span class="icon">💬 <span id="modal-comments">0</span></span>
-                        <span class="icon">🔄 <span id="modal-reposts">0</span></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Полноэкранное окно Истории -->
+    <!-- Модальное окно просмотра Истории -->
     <div id="story-viewer" class="story-viewer">
         <div class="story-progress"><div class="story-progress-bar" id="story-bar"></div></div>
         <img id="story-viewer-img" src="" alt="Story">
+        <div class="story-views-overlay">👁 <span id="story-views-count">0</span> просмотров</div>
     </div>
 
     <script src="script.js"></script>

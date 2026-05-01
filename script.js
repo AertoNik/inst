@@ -1,123 +1,54 @@
-// Элементы UI
+// Элементы
+const appBody = document.body;
+const themeToggle = document.getElementById('theme-toggle');
+const resetBtn = document.getElementById('reset-btn');
+
+// Элементы профиля
 const followersEl = document.getElementById('followers-count');
 const followingEl = document.getElementById('following-count');
 const postsCountEl = document.getElementById('posts-count');
-const avatarImg = document.getElementById('avatar-image');
-const storyAvatarImg = document.getElementById('story-avatar');
-
-// Базы данных генерируемого контента
-const FAKE_USERNAMES = ['neon_dreamer', 'cyber.punk', 'noir_aesthetic', 'night.crawler', 'visual.arts', 'dark_matter', 'shadow.walker'];
-const FAKE_COMMENTS = [
-    "Просто невероятная атмосфера! 🎬", "Идеальный кадр.", "🔥🔥🔥", 
-    "Очень стильно вышло.", "Как всегда на высоте!", "Не могу перестать смотреть.", 
-    "Это шедевр...", "Научи так же делать! 🖤", "Какой свет, какие тени!", "Вау, просто вау."
-];
+const profileAvatar = document.getElementById('profile-avatar');
+const homeAvatar = document.getElementById('home-avatar');
+const navAvatar = document.getElementById('nav-avatar');
 
 // Хранилища
+let isDarkMode = false;
 let postsData = [];
-let reelsData = [];
 let storiesData = [];
+let totalLikesEarned = 0;
+let sessionsCount = 1;
+
+// Константы
+const STORY_LIFETIME_MS = 5 * 60 * 1000; // 5 минут
+const FAKE_USERS = ['artnik_film', 'detective_sys', 'cyber.neo', 'pastry.chef.pro', 'warden_official'];
 
 // ==========================================
-// 1. ДВИЖОК МАСШТАБИРОВАНИЯ И ВОВЛЕЧЕННОСТИ
+// НАВИГАЦИЯ И ВИДЫ
 // ==========================================
-function getFollowers() {
-    return parseInt(followersEl.innerText.replace(/\s/g, '')) || 0;
+function switchView(viewId) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById(viewId).classList.add('active');
+    if(viewId === 'view-home') renderFakeFeed();
 }
 
-// Лайки зависят от числа подписчиков (ER от 5% до 15%)
-function calculateInitialLikes(followers) {
-    const engagementRate = (Math.random() * 0.10) + 0.05; 
-    let likes = Math.floor(followers * engagementRate);
-    return likes < 5 ? Math.floor(Math.random() * 10) + 5 : likes;
-}
+// ==========================================
+// ТЕМА И НАСТРОЙКИ
+// ==========================================
+themeToggle.addEventListener('click', () => {
+    isDarkMode = !isDarkMode;
+    appBody.classList.toggle('dark-mode', isDarkMode);
+    saveState();
+});
 
-// Генерация комментариев
-function generateComments(count) {
-    let comments = [];
-    for(let i=0; i<count; i++) {
-        comments.push({
-            user: FAKE_USERNAMES[Math.floor(Math.random() * FAKE_USERNAMES.length)],
-            text: FAKE_COMMENTS[Math.floor(Math.random() * FAKE_COMMENTS.length)]
-        });
+resetBtn.addEventListener('click', () => {
+    if(confirm('Точно удалить все фото, сторис и прогресс?')) {
+        localStorage.clear();
+        location.reload();
     }
-    return comments;
-}
-
-// ==========================================
-// 2. ЗАГРУЗКА КОНТЕНТА (ПОСТЫ И РИЛС)
-// ==========================================
-function handleUpload(e, type) {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(event) {
-        const url = event.target.result;
-        const currentFollowers = getFollowers();
-        
-        const newItem = {
-            id: Date.now(),
-            url: url,
-            type: type,
-            likes: calculateInitialLikes(currentFollowers),
-            commentsArr: generateComments(Math.floor(Math.random() * 5) + 1), // 1-5 стартовых комментов
-            reposts: Math.floor(Math.random() * (currentFollowers / 100)) + 1
-        };
-
-        if (type === 'post') {
-            postsData.unshift(newItem);
-        } else {
-            reelsData.unshift(newItem);
-        }
-        
-        updateGrid(type);
-        postsCountEl.innerText = postsData.length + reelsData.length;
-        saveState();
-    };
-    reader.readAsDataURL(file);
-}
-
-document.getElementById('image-upload').addEventListener('change', (e) => handleUpload(e, 'post'));
-document.getElementById('reels-upload').addEventListener('change', (e) => handleUpload(e, 'reel'));
-
-// Отрисовка сеток
-function updateGrid(type) {
-    const grid = type === 'post' ? document.getElementById('feed-posts') : document.getElementById('feed-reels');
-    const data = type === 'post' ? postsData : reelsData;
-    
-    grid.innerHTML = '';
-    data.forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'post';
-        div.onclick = () => openModal(item);
-        div.innerHTML = `
-            <img src="${item.url}" alt="Media">
-            <div class="post-overlay">
-                <span>❤️ <span id="grid-likes-${item.id}">${item.likes}</span></span>
-                <span>💬 <span id="grid-comments-${item.id}">${item.commentsArr.length}</span></span>
-            </div>
-        `;
-        grid.appendChild(div);
-    });
-}
-
-// ==========================================
-// 3. ВКЛАДКИ (TABS)
-// ==========================================
-document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', (e) => {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        e.target.classList.add('active');
-        
-        const target = e.target.getAttribute('data-tab');
-        document.getElementById('feed-posts').style.display = target === 'posts' ? 'grid' : 'none';
-        document.getElementById('feed-reels').style.display = target === 'reels' ? 'grid' : 'none';
-    });
 });
 
 // ==========================================
-// 4. СИСТЕМА ИСТОРИЙ (STORIES)
+// СТОРИС (5 минут жизни + просмотры)
 // ==========================================
 document.getElementById('add-story-btn').addEventListener('click', () => document.getElementById('story-upload').click());
 
@@ -126,8 +57,12 @@ document.getElementById('story-upload').addEventListener('change', function(e) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function(event) {
-        const newStory = { id: Date.now(), url: event.target.result };
-        storiesData.push(newStory);
+        storiesData.push({ 
+            id: Date.now(), 
+            url: event.target.result, 
+            timestamp: Date.now(),
+            views: 0 
+        });
         renderStoriesFeed();
         saveState();
     };
@@ -135,16 +70,21 @@ document.getElementById('story-upload').addEventListener('change', function(e) {
 });
 
 function renderStoriesFeed() {
-    const feed = document.getElementById('stories-feed');
-    // Удаляем все старые истории, оставляем только кнопку "+"
+    const feed = document.getElementById('home-stories');
     const addBtn = document.getElementById('add-story-btn');
     feed.innerHTML = '';
     feed.appendChild(addBtn);
 
+    const now = Date.now();
+    // Фильтруем: оставляем только те, что моложе 5 минут
+    storiesData = storiesData.filter(s => now - s.timestamp < STORY_LIFETIME_MS);
+    
+    document.getElementById('active-stories-stat').innerText = storiesData.length;
+
     storiesData.forEach((story, index) => {
         const div = document.createElement('div');
         div.className = 'story';
-        div.onclick = () => viewStory(story.url);
+        div.onclick = () => viewStory(story);
         div.innerHTML = `
             <div class="story-ring"><img src="${story.url}" alt="Story"></div>
             <span class="story-name">История ${index + 1}</span>
@@ -153,15 +93,16 @@ function renderStoriesFeed() {
     });
 }
 
-function viewStory(url) {
+function viewStory(story) {
     const viewer = document.getElementById('story-viewer');
     const img = document.getElementById('story-viewer-img');
     const bar = document.getElementById('story-bar');
+    const viewsEl = document.getElementById('story-views-count');
     
-    img.src = url;
+    img.src = story.url;
+    viewsEl.innerText = story.views;
     viewer.classList.add('active');
     
-    // Анимация полоски
     bar.style.transition = 'none';
     bar.style.width = '0%';
     setTimeout(() => {
@@ -169,147 +110,167 @@ function viewStory(url) {
         bar.style.width = '100%';
     }, 50);
 
-    // Закрытие через 3 секунды
     setTimeout(() => viewer.classList.remove('active'), 3000);
 }
 
 // ==========================================
-// 5. МОДАЛЬНОЕ ОКНО И КОММЕНТАРИИ
+// ПРОФИЛЬ: ФОТО И ЛЕНТА
 // ==========================================
-const modal = document.getElementById('post-modal');
-let currentOpenItem = null;
+document.getElementById('avatar-wrapper').addEventListener('click', () => {
+    document.getElementById('avatar-upload').click();
+});
 
-function openModal(item) {
-    currentOpenItem = item;
-    document.getElementById('modal-avatar').src = avatarImg.src;
-    document.getElementById('modal-username').innerText = document.querySelector('.username').innerText;
-    document.getElementById('modal-image').src = item.url;
-    
-    updateModalStats(item);
-    renderComments(item.commentsArr);
-    
-    modal.classList.add('active');
+function updateAvatars(src) {
+    profileAvatar.src = src; homeAvatar.src = src; navAvatar.src = src;
 }
 
-function renderComments(comments) {
-    const list = document.getElementById('modal-comments-list');
-    list.innerHTML = '';
-    comments.forEach(c => {
-        list.innerHTML += `
-            <div class="comment-item">
-                <div class="comment-avatar"></div>
-                <div class="comment-text"><strong>${c.user}</strong>${c.text}</div>
+document.getElementById('avatar-upload').addEventListener('change', function(e) {
+    if (e.target.files[0]) {
+        const r = new FileReader();
+        r.onload = (ev) => { updateAvatars(ev.target.result); saveState(); };
+        r.readAsDataURL(e.target.files[0]);
+    }
+});
+
+document.getElementById('image-upload').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        postsData.unshift({ id: Date.now(), url: event.target.result, likes: Math.floor(Math.random() * 20) + 5 });
+        renderProfileGrid();
+        saveState();
+    };
+    reader.readAsDataURL(file);
+});
+
+function renderProfileGrid() {
+    const grid = document.getElementById('profile-feed');
+    grid.innerHTML = '';
+    postsData.forEach(post => {
+        const div = document.createElement('div');
+        div.className = 'post';
+        div.innerHTML = `<img src="${post.url}" alt="Post">`;
+        grid.appendChild(div);
+    });
+    postsCountEl.innerText = postsData.length;
+}
+
+// ==========================================
+// ФЕЙКОВАЯ ЛЕНТА (ГЛАВНАЯ)
+// ==========================================
+function renderFakeFeed() {
+    const feed = document.getElementById('fake-feed');
+    if(feed.innerHTML.trim() !== '') return; // Генерируем 1 раз за сессию
+
+    for(let i=0; i<3; i++) {
+        const user = FAKE_USERS[Math.floor(Math.random() * FAKE_USERS.length)];
+        // Подставляем рандомные картинки из Unsplash для атмосферы
+        const randomImg = `https://images.unsplash.com/photo-${1500000000000 + Math.floor(Math.random()*100000)}?w=400&q=80`;
+        const likes = Math.floor(Math.random() * 1000);
+        
+        feed.innerHTML += `
+            <div class="fake-post">
+                <div class="fake-post-header">
+                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${user}" alt="avatar">
+                    <span>${user}</span>
+                </div>
+                <img class="fake-post-image" src="${randomImg}" alt="Feed">
+                <div class="fake-post-actions">❤️ 💬 ↗️</div>
+                <div class="fake-post-likes">${likes} отметок "Нравится"</div>
             </div>
         `;
-    });
+    }
 }
-
-function updateModalStats(item) {
-    document.getElementById('modal-likes').innerText = item.likes;
-    document.getElementById('modal-comments').innerText = item.commentsArr.length;
-    document.getElementById('modal-reposts').innerText = item.reposts;
-}
-
-document.getElementById('modal-close').addEventListener('click', () => modal.classList.remove('active'));
-modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('active'); });
 
 // ==========================================
-// 6. ЖИВОЙ РОСТ (ЗАВИСИТ ОТ РАЗМЕРА АУДИТОРИИ)
+// ИГРОВОЙ ЦИКЛ РОСТА
 // ==========================================
 setInterval(() => {
     let hasChanges = false;
-    let currentFollowers = getFollowers();
     
-    // Множитель роста: чем больше подписчиков, тем быстрее идет рост
-    // Базовый множитель 1. За каждую 1000 подписчиков скорость удваивается.
-    let growthMultiplier = 1 + (currentFollowers / 1000); 
-
-    // Рост подписчиков
-    let newFollowers = Math.floor(Math.random() * 3 * growthMultiplier);
-    if (newFollowers > 0) {
-        followersEl.innerText = currentFollowers + newFollowers;
+    // 1. Прирост подписчиков
+    let currentFollowers = parseInt(followersEl.innerText) || 0;
+    if (Math.random() > 0.4) {
+        followersEl.innerText = currentFollowers + Math.floor(Math.random() * 3);
         hasChanges = true;
     }
 
-    // Рост реакций на весь контент
-    const allContent = [...postsData, ...reelsData];
-    allContent.forEach(item => {
-        if (Math.random() > 0.5) { // 50% шанс получить реакцию в этот тик
-            item.likes += Math.floor(Math.random() * 5 * growthMultiplier);
-            
-            // Добавление новых комментариев
-            if (Math.random() > 0.8) {
-                item.commentsArr.push({
-                    user: FAKE_USERNAMES[Math.floor(Math.random() * FAKE_USERNAMES.length)],
-                    text: FAKE_COMMENTS[Math.floor(Math.random() * FAKE_COMMENTS.length)]
-                });
+    // 2. Обновление просмотров на Сторис
+    if (storiesData.length > 0) {
+        storiesData.forEach(s => { s.views += Math.floor(Math.random() * 4); });
+        renderStoriesFeed(); // Перерисовываем для проверки таймера 5 минут
+        hasChanges = true;
+    }
+
+    // 3. Лайки на профиле
+    if (postsData.length > 0) {
+        postsData.forEach(p => { 
+            if(Math.random() > 0.6) {
+                let gained = Math.floor(Math.random() * 3);
+                p.likes += gained;
+                totalLikesEarned += gained;
             }
-            
-            item.reposts += Math.random() > 0.8 ? Math.floor(growthMultiplier) : 0;
-            hasChanges = true;
+        });
+        document.getElementById('total-likes-stat').innerText = totalLikesEarned;
+        hasChanges = true;
+    }
 
-            // Обновление UI
-            const gridLikes = document.getElementById(`grid-likes-${item.id}`);
-            const gridComments = document.getElementById(`grid-comments-${item.id}`);
-            if (gridLikes) gridLikes.innerText = item.likes;
-            if (gridComments) gridComments.innerText = item.commentsArr.length;
-
-            if (currentOpenItem && currentOpenItem.id === item.id) {
-                updateModalStats(item);
-                renderComments(item.commentsArr); // Перерисовываем комменты, если они добавились
-            }
-        }
-    });
-
-    if (hasChanges) saveState();
-}, 3000);
+    if(hasChanges) saveState();
+}, 4000);
 
 // ==========================================
-// 7. СОХРАНЕНИЕ / ИНИЦИАЛИЗАЦИЯ
+// СОХРАНЕНИЕ
 // ==========================================
 function saveState() {
-    const profileState = {
+    const state = {
         followers: followersEl.innerText, following: followingEl.innerText,
-        username: document.querySelector('.username').innerText,
         bioName: document.querySelector('.bio-name').innerText,
         bioDesc: document.querySelector('.bio-description').innerText,
-        avatar: avatarImg.src
+        username: document.getElementById('header-username').innerText,
+        avatar: profileAvatar.src,
+        isDark: isDarkMode,
+        totalLikes: totalLikesEarned,
+        sessions: sessionsCount
     };
-    localStorage.setItem('sim_profile', JSON.stringify(profileState));
+    localStorage.setItem('sim_state', JSON.stringify(state));
     localStorage.setItem('sim_posts', JSON.stringify(postsData));
-    localStorage.setItem('sim_reels', JSON.stringify(reelsData));
     localStorage.setItem('sim_stories', JSON.stringify(storiesData));
 }
 
 function loadState() {
     try {
-        const savedProfile = JSON.parse(localStorage.getItem('sim_profile'));
-        if (savedProfile) {
-            followersEl.innerText = savedProfile.followers; followingEl.innerText = savedProfile.following;
-            document.querySelector('.username').innerText = savedProfile.username;
-            document.querySelector('.bio-name').innerText = savedProfile.bioName;
-            document.querySelector('.bio-description').innerText = savedProfile.bioDesc;
-            if (savedProfile.avatar) {
-                avatarImg.src = savedProfile.avatar;
-                storyAvatarImg.src = savedProfile.avatar;
-            }
+        const state = JSON.parse(localStorage.getItem('sim_state'));
+        if (state) {
+            followersEl.innerText = state.followers; followingEl.innerText = state.following;
+            document.querySelector('.bio-name').innerText = state.bioName;
+            document.querySelector('.bio-description').innerText = state.bioDesc;
+            document.getElementById('header-username').innerText = state.username;
+            if (state.avatar) updateAvatars(state.avatar);
+            
+            isDarkMode = state.isDark || false;
+            appBody.classList.toggle('dark-mode', isDarkMode);
+            
+            totalLikesEarned = state.totalLikes || 0;
+            sessionsCount = (state.sessions || 0) + 1;
+            document.getElementById('total-likes-stat').innerText = totalLikesEarned;
+            document.getElementById('sessions-stat').innerText = sessionsCount;
         }
+        
         postsData = JSON.parse(localStorage.getItem('sim_posts')) || [];
-        reelsData = JSON.parse(localStorage.getItem('sim_reels')) || [];
         storiesData = JSON.parse(localStorage.getItem('sim_stories')) || [];
         
-        postsCountEl.innerText = postsData.length + reelsData.length;
-        updateGrid('post'); updateGrid('reel'); renderStoriesFeed();
-    } catch(e) { console.error("Ошибка загрузки сохранений", e); }
+        renderProfileGrid();
+        renderStoriesFeed();
+    } catch(e) {}
+    
+    saveState(); // Перезаписываем с новым счетчиком сессий
 }
 
-[followersEl, followingEl].forEach(el => el.addEventListener('input', saveState));
-document.getElementById('avatar-upload').addEventListener('change', function(e) {
-    if (e.target.files[0]) {
-        const r = new FileReader();
-        r.onload = (event) => { avatarImg.src = event.target.result; storyAvatarImg.src = event.target.result; saveState(); };
-        r.readAsDataURL(e.target.files[0]);
-    }
+// Отслеживание ручного ввода текста
+[followersEl, followingEl, document.querySelector('.bio-name'), document.querySelector('.bio-description')].forEach(el => {
+    el.addEventListener('input', saveState);
 });
 
+// Запуск
 loadState();
