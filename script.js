@@ -30,13 +30,13 @@ async function getMediaFile(id) {
        req.onsuccess = () => resolve(req.result);
    });
 }
-async function deleteMediaFile(id) { // НОВАЯ ФУНКЦИЯ ДЛЯ УДАЛЕНИЯ
-    const db = await initDB();
-    return new Promise(resolve => {
-        const tx = db.transaction('media', 'readwrite');
-        tx.objectStore('media').delete(id);
-        tx.oncomplete = () => resolve();
-    });
+async function deleteMediaFile(id) {
+   const db = await initDB();
+   return new Promise(resolve => {
+       const tx = db.transaction('media', 'readwrite');
+       tx.objectStore('media').delete(id);
+       tx.oncomplete = () => resolve();
+   });
 }
 async function clearDB() {
    const db = await initDB();
@@ -53,23 +53,26 @@ const defaultState = {
    followers: 1420,
    following: 35,
    avatarId: null,
-   posts: [], // {id, type, timestamp, myComments, archived: false, extraLikes: 0}
-   history: []
+   posts: [], 
+   history: [],
+   chats: [] // Добавлено для Директа
 };
 
 let state = JSON.parse(localStorage.getItem('insta_sim_state')) || defaultState;
 if (!state.history) state.history = [];
+if (!state.chats) state.chats = [];
 if (state.verified === undefined) state.verified = false;
 if (!state.bioName) state.bioName = defaultState.bioName;
 if (!state.bioText) state.bioText = defaultState.bioText;
-state.posts.forEach(p => { 
-    if(p.archived === undefined) p.archived = false; 
-    if(p.extraLikes === undefined) p.extraLikes = 0; // Лайки от двойного тапа
+state.posts.forEach(p => {
+   if(p.archived === undefined) p.archived = false;
+   if(p.extraLikes === undefined) p.extraLikes = 0;
 });
 
 let currentGridTab = 'posts';
 let currentViewItem = null;
-let lastTapTime = 0; // Для отслеживания двойного тапа
+let lastTapTime = 0; 
+let activeChatUser = null;
 
 function saveStateLocally() { localStorage.setItem('insta_sim_state', JSON.stringify(state)); }
 
@@ -77,6 +80,7 @@ function saveStateLocally() { localStorage.setItem('insta_sim_state', JSON.strin
 const STAR_USERS = ["mrbeast", "zendaya", "cristiano", "tomholland2013", "leomessi", "elonmusk"];
 const REGULAR_USERS = ["cyber.neo", "detective_sys", "warden_official", "pastry.pro", "night_owl", "shadow.walker", "neon_dreamer", "art.lover99", "cinematic.vibe", "urban.explore", "user_19924"];
 const FAKE_COMMENTS = ["This is insane! 🔥", "Broooo", "Атмосферно!", "Где это?", "Топ", "Очень красиво 🎬", "bro this is good", "love this", "Шедевр!", "Идеальный свет", "Вайбово", "Keep it up! 👏", "Amazing work", "Ну это развал 🤯", "Научи так же", "Как всегда на высоте"];
+const DM_TEMPLATES = ["Привет! Очень крутая работа 🎬", "Слушай, а какой свет ты использовал в последнем Reels?", "Сценарий просто огонь 🔥", "ARCHETYPE выглядит очень мощно.", "Хочу заказать у тебя съемку, свободен в этом месяце?", "Просто зашел сказать, что твой визуал — это кайф.", "Wow! Can we collab? 🤝"];
 
 function formatNum(num) {
    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
@@ -87,7 +91,6 @@ function formatNum(num) {
 function calculateLiveStats(item) {
    const ageMinutes = Math.max((Date.now() - item.timestamp) / 60000, 0);
    const f = parseInt(state.followers) || 0;
-  
    let likes = 0, views = 0, comments = 0, reposts = 0;
 
    if (item.type === 'story') {
@@ -109,9 +112,7 @@ function calculateLiveStats(item) {
        reposts = Math.floor(views * 0.05);
    }
 
-   // Прибавляем бонусные лайки от Double Tap
    likes += (item.extraLikes || 0);
-
    const myCommentsCount = item.myComments ? item.myComments.length : 0;
    return { likes, views, comments: comments + myCommentsCount, reposts };
 }
@@ -144,6 +145,8 @@ function updateFullUI() {
    renderGrid();
    renderStories();
    renderStatsPage();
+   renderDMList();
+   updateDMBadge();
 }
 
 function updateLiveNumbers() { document.getElementById('stat-followers').innerText = formatNum(state.followers); }
@@ -152,6 +155,7 @@ function switchTab(tabId) {
    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
    document.getElementById(`view-${tabId}`).classList.add('active');
    closeModals();
+   if(tabId === 'direct') renderDMList();
 }
 
 function setGridTab(tab) {
@@ -186,9 +190,7 @@ async function renderGrid() {
        return p.type === 'post' || p.type === 'photo' || p.type === 'video';
    }).reverse();
 
-   // Счетчик постов (без архива и сторис)
    document.getElementById('stat-posts').innerText = state.posts.filter(p => p.type !== 'story' && !p.archived).length;
-
    const fragment = document.createDocumentFragment();
 
    for (const item of items) {
@@ -239,6 +241,7 @@ async function renderStories() {
        div.innerHTML = src.startsWith('data:video') ? `<video src="${src}" muted></video>` : `<img src="${src}">`;
        fragment.appendChild(div);
    }
+
    const bar = document.getElementById('stories-bar');
    bar.innerHTML = ''; bar.appendChild(fragment);
 }
@@ -267,7 +270,7 @@ function renderStatsPage() {
    document.getElementById('stat-24-minus').innerText = formatNum(minus24);
 }
 
-// --- 6. PUSH-УВЕДОМЛЕНИЯ ---
+// --- 6. DIRECT MESSAGES И УВЕДОМЛЕНИЯ ---
 function showToast(message, icon = '') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
@@ -277,12 +280,93 @@ function showToast(message, icon = '') {
     setTimeout(() => { if(toast.parentElement) toast.remove(); }, 3800);
 }
 
+function updateDMBadge() {
+    let unreadCount = 0;
+    state.chats.forEach(c => { if(c.unread) unreadCount += c.unread; });
+    const badge = document.getElementById('dm-badge');
+    if (badge) {
+        if(unreadCount > 0) { badge.innerText = unreadCount; badge.classList.remove('hidden'); } 
+        else { badge.classList.add('hidden'); }
+    }
+}
+
+function renderDMList() {
+    const list = document.getElementById('dm-list');
+    if (!list) return;
+    list.innerHTML = '';
+    if(state.chats.length === 0) { list.innerHTML = '<div style="padding: 20px; color: var(--text-muted); text-align: center;">Нет сообщений</div>'; return; }
+    
+    state.chats.sort((a,b) => b.messages[b.messages.length-1].ts - a.messages[a.messages.length-1].ts).forEach(chat => {
+        const lastMsg = chat.messages[chat.messages.length - 1];
+        const div = document.createElement('div');
+        div.className = 'dm-item';
+        div.onclick = () => openChat(chat.user);
+        
+        const isStar = STAR_USERS.includes(chat.user);
+        const vBadge = isStar ? `<span class="verified-badge" style="width:14px; height:14px;"></span>` : '';
+        const unreadDot = chat.unread > 0 ? `<div class="dm-unread-dot"></div>` : '';
+        const initial = chat.user.charAt(0).toUpperCase();
+
+        div.innerHTML = `
+            <div class="dm-avatar">${initial}</div>
+            <div class="dm-content">
+                <div class="dm-user">@${chat.user}${vBadge}</div>
+                <div class="dm-preview" style="${chat.unread > 0 ? 'color: var(--text); font-weight: bold;' : ''}">${lastMsg.from === 'me' ? 'Вы: ' : ''}${lastMsg.text}</div>
+            </div>
+            ${unreadDot}
+        `;
+        list.appendChild(div);
+    });
+}
+
+function openChat(username) {
+    activeChatUser = username;
+    const chat = state.chats.find(c => c.user === username);
+    if(chat) { chat.unread = 0; saveStateLocally(); updateDMBadge(); renderDMList(); }
+    
+    document.getElementById('chat-header-name').innerText = `@${username}`;
+    document.getElementById('modal-chat').classList.remove('hidden');
+    renderChatHistory();
+}
+
+function closeChat() { document.getElementById('modal-chat').classList.add('hidden'); activeChatUser = null; }
+
+function renderChatHistory() {
+    const historyBox = document.getElementById('chat-history');
+    if (!historyBox) return;
+    historyBox.innerHTML = '';
+    const chat = state.chats.find(c => c.user === activeChatUser);
+    if(!chat) return;
+
+    chat.messages.forEach(m => {
+        const div = document.createElement('div');
+        div.className = `chat-bubble ${m.from}`;
+        div.innerText = m.text;
+        historyBox.appendChild(div);
+    });
+    historyBox.scrollTop = historyBox.scrollHeight;
+}
+
+function sendChatMessage() {
+    const inp = document.getElementById('chat-input');
+    if(inp.value.trim() && activeChatUser) {
+        let chat = state.chats.find(c => c.user === activeChatUser);
+        if(!chat) { chat = { user: activeChatUser, messages: [], unread: 0 }; state.chats.push(chat); }
+        chat.messages.push({ from: 'me', text: inp.value.trim(), ts: Date.now() });
+        inp.value = '';
+        saveStateLocally();
+        renderChatHistory();
+        renderDMList();
+    }
+}
+
 // --- 7. ВЬЮВЕР, МЕНЮ, ЗАГРУЗКА ---
 function openAddModal() { document.getElementById('modal-add').classList.remove('hidden'); }
 function closeModals() {
    document.getElementById('modal-add').classList.add('hidden');
    document.getElementById('modal-viewer').classList.add('hidden');
-   document.getElementById('post-action-menu').classList.add('hidden');
+   const menu = document.getElementById('post-action-menu');
+   if (menu) menu.classList.add('hidden');
    document.getElementById('viewer-media').innerHTML = '<div id="heart-anim" class="heart-overlay hidden"><svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></div>';
    clearTimeout(window.storyTimer);
 }
@@ -293,176 +377,168 @@ function closePostMenu() { document.getElementById('post-action-menu').classList
 
 // Архивация
 function toggleArchive() {
-    if(currentViewItem) {
-        currentViewItem.archived = !currentViewItem.archived;
-        saveStateLocally();
-        closeModals();
-        renderGrid();
-        showToast(currentViewItem.archived ? 'Перемещено в архив' : 'Восстановлено в профиле', ICO_SHARE);
-    }
+   if(currentViewItem) {
+       currentViewItem.archived = !currentViewItem.archived;
+       saveStateLocally();
+       closeModals();
+       renderGrid();
+       showToast(currentViewItem.archived ? 'Перемещено в архив' : 'Восстановлено в профиле', ICO_SHARE);
+   }
 }
 
 // Полное удаление
 async function deletePost() {
-    if(currentViewItem && confirm('Точно удалить этот пост навсегда?')) {
-        state.posts = state.posts.filter(p => p.id !== currentViewItem.id);
-        await deleteMediaFile(currentViewItem.id);
-        saveStateLocally();
-        closeModals();
-        renderGrid();
-        renderStories();
-        showToast('Публикация удалена', '');
-    }
+   if(currentViewItem && confirm('Точно удалить этот пост навсегда?')) {
+       state.posts = state.posts.filter(p => p.id !== currentViewItem.id);
+       await deleteMediaFile(currentViewItem.id);
+       saveStateLocally();
+       closeModals();
+       renderGrid();
+       renderStories();
+       showToast('Публикация удалена', '');
+   }
 }
 
 async function handleUpload(e, type) {
-   const file = e.target.files[0];
-   if(!file) return;
-   const reader = new FileReader();
-   reader.onload = async (event) => {
-       const id = 'media_' + Date.now();
-       await saveMediaFile(id, event.target.result);
-       let actualType = type;
-       if(type === 'post' && file.type.startsWith('video/')) actualType = 'video';
-       state.posts.push({ id, type: actualType, timestamp: Date.now(), myComments: [], extraLikes: 0, archived: false });
-       saveStateLocally();
-       closeModals();
-       if (type === 'story') renderStories(); else setGridTab(actualType === 'reel' ? 'reels' : 'posts');
-       if (!document.getElementById('view-profile').classList.contains('active')) switchTab('profile');
-   };
-   reader.readAsDataURL(file);
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (event) => {
+      const id = 'media_' + Date.now();
+      await saveMediaFile(id, event.target.result);
+      let actualType = type;
+      if(type === 'post' && file.type.startsWith('video/')) actualType = 'video';
+      state.posts.push({ id, type: actualType, timestamp: Date.now(), myComments: [], extraLikes: 0, archived: false });
+      saveStateLocally();
+      closeModals();
+      if (type === 'story') renderStories(); else setGridTab(actualType === 'reel' ? 'reels' : 'posts');
+      if (!document.getElementById('view-profile').classList.contains('active')) switchTab('profile');
+  };
+  reader.readAsDataURL(file);
 }
 
 document.getElementById('avatar-upload').onchange = async (e) => {
-   const file = e.target.files[0];
-   if(!file) return;
-   const reader = new FileReader();
-   reader.onload = async (ev) => { await saveMediaFile('avatar', ev.target.result); state.avatarId = 'avatar'; saveStateLocally(); updateFullUI(); };
-   reader.readAsDataURL(file);
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev) => { await saveMediaFile('avatar', ev.target.result); state.avatarId = 'avatar'; saveStateLocally(); updateFullUI(); };
+  reader.readAsDataURL(file);
 };
 document.getElementById('upload-post').onchange = (e) => handleUpload(e, 'post');
 document.getElementById('upload-reel').onchange = (e) => handleUpload(e, 'reel');
 document.getElementById('upload-story').onchange = (e) => handleUpload(e, 'story');
 
 function openViewer(item, src) {
-   currentViewItem = item;
-   const viewer = document.getElementById('modal-viewer');
-   const mediaBox = document.getElementById('viewer-media');
-   const infoBox = document.getElementById('viewer-info');
-   const commentBox = document.getElementById('my-comment-box');
-   const storyProg = document.getElementById('story-progress');
-   const storyBar = document.getElementById('story-bar');
-   const btnArchive = document.getElementById('btn-archive');
+  currentViewItem = item;
+  const viewer = document.getElementById('modal-viewer');
+  const mediaBox = document.getElementById('viewer-media');
+  const infoBox = document.getElementById('viewer-info');
+  const commentBox = document.getElementById('my-comment-box');
+  const storyProg = document.getElementById('story-progress');
+  const storyBar = document.getElementById('story-bar');
+  const btnArchive = document.getElementById('btn-archive');
+  const menuToggle = document.getElementById('viewer-menu-toggle');
   
-   viewer.classList.remove('hidden');
-   document.getElementById('post-action-menu').classList.add('hidden');
-   
-   // Обновление кнопки архива
-   btnArchive.innerText = item.archived ? "Восстановить в профиль" : "Скрыть в Архив";
+  viewer.classList.remove('hidden');
+  document.getElementById('post-action-menu').classList.add('hidden');
+ 
+  if (btnArchive) btnArchive.innerText = item.archived ? "Восстановить в профиль" : "Скрыть в Архив";
 
-   const isVideo = src.startsWith('data:video');
-   const mediaEl = isVideo ? `<video src="${src}" autoplay loop controls></video>` : `<img src="${src}">`;
-   
-   // Сохраняем сердце, заменяем только медиа
-   mediaBox.innerHTML = mediaEl + '<div id="heart-anim" class="heart-overlay"><svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></div>';
+  const isVideo = src.startsWith('data:video');
+  const mediaEl = isVideo ? `<video src="${src}" autoplay loop controls></video>` : `<img src="${src}">`;
+ 
+  mediaBox.innerHTML = mediaEl + '<div id="heart-anim" class="heart-overlay"><svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></div>';
 
-   // --- ЛОГИКА ДВОЙНОГО ТАПА (Double Tap) ---
-   mediaBox.onclick = (e) => {
-       const currentTime = new Date().getTime();
-       const tapLength = currentTime - lastTapTime;
-       if (tapLength < 300 && tapLength > 0) {
-           // Триггер двойного тапа
-           const heartAnim = document.getElementById('heart-anim');
-           heartAnim.classList.remove('animate');
-           void heartAnim.offsetWidth; // Рестарт анимации
-           heartAnim.classList.add('animate');
-           
-           if(item.type !== 'story') {
-               item.extraLikes += 1;
-               saveStateLocally();
-               const newStats = calculateLiveStats(item);
-               document.getElementById('viewer-like-count').innerText = formatNum(newStats.likes);
-           }
-           e.preventDefault();
-       }
-       lastTapTime = currentTime;
-   };
+  // --- ЛОГИКА ДВОЙНОГО ТАПА (Double Tap) ---
+  mediaBox.onclick = (e) => {
+      const currentTime = new Date().getTime();
+      const tapLength = currentTime - lastTapTime;
+      if (tapLength < 300 && tapLength > 0) {
+          const heartAnim = document.getElementById('heart-anim');
+          heartAnim.classList.remove('animate');
+          void heartAnim.offsetWidth; 
+          heartAnim.classList.add('animate');
+         
+          if(item.type !== 'story') {
+              item.extraLikes += 1;
+              saveStateLocally();
+              const newStats = calculateLiveStats(item);
+              document.getElementById('viewer-like-count').innerText = formatNum(newStats.likes);
+          }
+          e.preventDefault();
+      }
+      lastTapTime = currentTime;
+  };
 
-   const stats = calculateLiveStats(item);
+  const stats = calculateLiveStats(item);
 
-   if (item.type === 'story') {
-       storyProg.classList.remove('hidden');
-       commentBox.classList.add('hidden');
-       document.getElementById('viewer-menu-toggle').classList.add('hidden');
-       infoBox.innerHTML = `<div style="display:flex; align-items:center; gap:6px; font-weight: 600;">${ICO_EYE} ${formatNum(stats.views)} просмотров</div>`;
-       storyBar.style.transition = 'none'; storyBar.style.width = '0%';
-       setTimeout(() => { storyBar.style.transition = 'width 5s linear'; storyBar.style.width = '100%'; }, 50);
-       window.storyTimer = setTimeout(closeModals, 5000);
-   } else {
-       storyProg.classList.add('hidden');
-       commentBox.classList.remove('hidden');
-       document.getElementById('viewer-menu-toggle').classList.remove('hidden');
-      
-       let commentsHTML = '';
-       if(item.myComments) item.myComments.forEach(c => commentsHTML += `<div style="margin-bottom:8px"><b>@${state.username}</b> <span style="color:#eee">${c}</span></div>`);
-      
-       const commentsToShow = Math.min(stats.comments, 15);
-       for(let i=0; i<commentsToShow; i++) {
-           let u, vBadge = '';
-           if (Math.random() < 0.1) {
-               u = STAR_USERS[(i + item.timestamp) % STAR_USERS.length];
-               vBadge = `<span class="verified-badge" style="width:12px; height:12px;"></span>`;
-           } else {
-               u = REGULAR_USERS[(i + item.timestamp) % REGULAR_USERS.length];
-           }
-           const t = FAKE_COMMENTS[(i + item.timestamp) % FAKE_COMMENTS.length];
-           commentsHTML += `<div style="margin-bottom:8px; color:#aaa; line-height: 1.3;"><b>${u}</b>${vBadge} <span style="color:#eee">${t}</span></div>`;
-       }
+  if (item.type === 'story') {
+      storyProg.classList.remove('hidden');
+      commentBox.classList.add('hidden');
+      if (menuToggle) menuToggle.classList.add('hidden');
+      infoBox.innerHTML = `<div style="display:flex; align-items:center; gap:6px; font-weight: 600;">${ICO_EYE} ${formatNum(stats.views)} просмотров</div>`;
+      storyBar.style.transition = 'none'; storyBar.style.width = '0%';
+      setTimeout(() => { storyBar.style.transition = 'width 5s linear'; storyBar.style.width = '100%'; }, 50);
+      window.storyTimer = setTimeout(closeModals, 5000);
+  } else {
+      storyProg.classList.add('hidden');
+      commentBox.classList.remove('hidden');
+      if (menuToggle) menuToggle.classList.remove('hidden');
+    
+      let commentsHTML = '';
+      if(item.myComments) item.myComments.forEach(c => commentsHTML += `<div style="margin-bottom:8px"><b>@${state.username}</b> <span style="color:#eee">${c}</span></div>`);
+    
+      const commentsToShow = Math.min(stats.comments, 15);
+      for(let i=0; i<commentsToShow; i++) {
+          let u, vBadge = '';
+          if (Math.random() < 0.1) {
+              u = STAR_USERS[(i + item.timestamp) % STAR_USERS.length];
+              vBadge = `<span class="verified-badge" style="width:12px; height:12px;"></span>`;
+          } else {
+              u = REGULAR_USERS[(i + item.timestamp) % REGULAR_USERS.length];
+          }
+          const t = FAKE_COMMENTS[(i + item.timestamp) % FAKE_COMMENTS.length];
+          commentsHTML += `<div style="margin-bottom:8px; color:#aaa; line-height: 1.3;"><b>${u}</b>${vBadge} <span style="color:#eee">${t}</span></div>`;
+      }
 
-       infoBox.innerHTML = `
-           <div style="margin-bottom:15px; display:flex; gap:18px; align-items:center;">
-               <span style="display:flex; align-items:center; gap:5px; font-weight:600;">${ICO_HEART} <span id="viewer-like-count">${formatNum(stats.likes)}</span></span>
-               <span style="display:flex; align-items:center; gap:5px; font-weight:600;">${ICO_COMMENT} ${formatNum(stats.comments)}</span>
-               <span style="display:flex; align-items:center; gap:5px; font-weight:600;">${ICO_SHARE} ${formatNum(stats.reposts)}</span>
-               ${(item.type === 'reel' || item.type === 'video') ? `<span style="display:flex; align-items:center; gap:5px; font-weight:600;">${ICO_EYE} ${formatNum(stats.views)}</span>` : ''}
-           </div>
-           <div style="max-height:150px; overflow-y:auto; font-size:14px; border-top:1px solid #333; padding-top:10px;">
-               ${commentsHTML || '<div style="color:#777">Нет комментариев</div>'}
-           </div>
-       `;
-   }
+      infoBox.innerHTML = `
+          <div style="margin-bottom:15px; display:flex; gap:18px; align-items:center;">
+              <span style="display:flex; align-items:center; gap:5px; font-weight:600;">${ICO_HEART} <span id="viewer-like-count">${formatNum(stats.likes)}</span></span>
+              <span style="display:flex; align-items:center; gap:5px; font-weight:600;">${ICO_COMMENT} ${formatNum(stats.comments)}</span>
+              <span style="display:flex; align-items:center; gap:5px; font-weight:600;">${ICO_SHARE} ${formatNum(stats.reposts)}</span>
+              ${(item.type === 'reel' || item.type === 'video') ? `<span style="display:flex; align-items:center; gap:5px; font-weight:600;">${ICO_EYE} ${formatNum(stats.views)}</span>` : ''}
+          </div>
+          <div style="max-height:150px; overflow-y:auto; font-size:14px; border-top:1px solid #333; padding-top:10px;">
+              ${commentsHTML || '<div style="color:#777">Нет комментариев</div>'}
+          </div>
+      `;
+  }
 }
 
 function addMyComment() {
-   const inp = document.getElementById('my-comment-input');
-   if(inp.value.trim() && currentViewItem) {
-       if(!currentViewItem.myComments) currentViewItem.myComments = [];
-       currentViewItem.myComments.push(inp.value.trim());
-       inp.value = '';
-       saveStateLocally();
-       getMediaFile(currentViewItem.id).then(src => openViewer(currentViewItem, src));
-   }
+  const inp = document.getElementById('my-comment-input');
+  if(inp.value.trim() && currentViewItem) {
+      if(!currentViewItem.myComments) currentViewItem.myComments = [];
+      currentViewItem.myComments.push(inp.value.trim());
+      inp.value = '';
+      saveStateLocally();
+      getMediaFile(currentViewItem.id).then(src => openViewer(currentViewItem, src));
+  }
 }
 
-// --- 8. ЖИВОЙ ЦИКЛ (События и Уведомления) ---
+// --- 8. ЖИВОЙ ЦИКЛ (Только ВАЖНЫЕ события) ---
 setInterval(() => {
    let hasChanges = false;
 
+   // Колебания подписчиков остались, но БЕЗ спама в уведомлениях
    if (Math.random() > 0.3) {
        let currentF = parseInt(state.followers) || 0;
        let diff = 0;
        let tierMult = 1;
-       if (currentF > 100000) tierMult = 50;
-       else if (currentF > 10000) tierMult = 10;
-       else if (currentF > 1000) tierMult = 3;
+       if (currentF > 100000) tierMult = 50; else if (currentF > 10000) tierMult = 10; else if (currentF > 1000) tierMult = 3;
 
-       if (Math.random() < 0.15) {
-           diff = -(Math.floor(Math.random() * 2 * tierMult) + 1);
-       } else {
-           diff = Math.floor(Math.random() * 4 * tierMult) + 1;
-           // Триггер уведомления о подписке (5% шанс при росте)
-           if (Math.random() < 0.05) showToast(`+${diff} новых подписчиков`, '👤');
-       }
+       if (Math.random() < 0.15) diff = -(Math.floor(Math.random() * 2 * tierMult) + 1);
+       else diff = Math.floor(Math.random() * 4 * tierMult) + 1;
 
        if (currentF + diff < 0) diff = -currentF;
 
@@ -473,8 +549,24 @@ setInterval(() => {
        }
    }
    
-   // Триггер случайного уведомления от звезд (3% шанс)
-   if (Math.random() < 0.03 && state.posts.length > 0) {
+   // --- ВАЖНЫЕ УВЕДОМЛЕНИЯ ---
+   // 1. Шанс получить сообщение в Direct (3%)
+   if (Math.random() < 0.03) {
+       const isStar = Math.random() < 0.3; // 30% шанс что пишет звезда
+       const sender = isStar ? STAR_USERS[Math.floor(Math.random() * STAR_USERS.length)] : REGULAR_USERS[Math.floor(Math.random() * REGULAR_USERS.length)];
+       const text = DM_TEMPLATES[Math.floor(Math.random() * DM_TEMPLATES.length)];
+       
+       let chat = state.chats.find(c => c.user === sender);
+       if(!chat) { chat = { user: sender, messages: [], unread: 0 }; state.chats.push(chat); }
+       
+       chat.messages.push({ from: 'them', text: text, ts: Date.now() });
+       chat.unread += 1;
+       hasChanges = true;
+       showToast(`Новое сообщение от @${sender}`, ICO_SHARE);
+   }
+
+   // 2. Уведомление об активности звезд под постами (2%)
+   if (Math.random() < 0.02 && state.posts.length > 0) {
        const star = STAR_USERS[Math.floor(Math.random() * STAR_USERS.length)];
        showToast(`@${star} оценил(а) вашу публикацию`, ICO_HEART);
    }
@@ -485,10 +577,16 @@ setInterval(() => {
        hasChanges = true;
    }
 
-   if (hasChanges) { saveStateLocally(); updateLiveNumbers(); }
-   renderStatsPage();
-   renderStories();
-   updateGridViews();
+   if (hasChanges) { 
+       saveStateLocally(); 
+       updateLiveNumbers(); 
+       updateDMBadge();
+       const viewDirect = document.getElementById('view-direct');
+       if(viewDirect && viewDirect.classList.contains('active')) renderDMList();
+       if(activeChatUser) renderChatHistory();
+   }
+   
+   renderStatsPage(); renderStories(); updateGridViews();
 }, 2000);
 
 document.getElementById('bio-name').addEventListener('input', (e) => { state.bioName = e.target.innerText; saveStateLocally(); });

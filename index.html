@@ -9,7 +9,7 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Контейнер для Push-уведомлений -->
+        <!-- Контейнер для важных Push-уведомлений -->
         <div id="toast-container" class="toast-container"></div>
 
         <!-- ВЕРХНЯЯ ПАНЕЛЬ -->
@@ -21,9 +21,16 @@
                 <span id="header-name-text">@artnik_film</span>
                 <span id="badge-header" class="verified-badge hidden"></span>
             </h1>
-            <button class="icon-btn" onclick="openAddModal()">
-                <svg class="nav-svg" viewBox="0 0 24 24"><path d="M12 2v20m10-10H2"/></svg>
-            </button>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <button class="icon-btn" onclick="openAddModal()">
+                    <svg class="nav-svg" viewBox="0 0 24 24"><path d="M12 2v20m10-10H2"/></svg>
+                </button>
+                <!-- Кнопка Direct -->
+                <button class="icon-btn" onclick="switchTab('direct')" style="position: relative;">
+                    <svg class="nav-svg" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    <span id="dm-badge" class="dm-badge hidden">0</span>
+                </button>
+            </div>
         </header>
 
         <!-- ОСНОВНОЙ КОНТЕНТ -->
@@ -58,11 +65,13 @@
 
                 <div class="stories-bar" id="stories-bar"></div>
 
-                <!-- Табы сетки (Добавлен Архив) -->
                 <div class="grid-tabs">
                     <button class="grid-tab active" id="tab-btn-posts" onclick="setGridTab('posts')">▦ Посты</button>
                     <button class="grid-tab" id="tab-btn-reels" onclick="setGridTab('reels')">▶ Reels</button>
-                    <button class="grid-tab" id="tab-btn-archive" onclick="setGridTab('archive')" style="font-size: 20px;">📦</button>
+                    <!-- Векторный Архив вместо смайлика -->
+                    <button class="grid-tab" id="tab-btn-archive" onclick="setGridTab('archive')" style="display:flex; justify-content:center; align-items:center;">
+                        <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                    </button>
                 </div>
 
                 <div class="feed-grid" id="profile-grid"></div>
@@ -73,11 +82,11 @@
                 <div class="pad-15">
                     <h2>Аналитика профиля</h2>
                     <div class="stats-cards">
-                        <div class="card" style="grid-column: span 2; text-align: center; background: #1a1a1a;">
+                        <div class="card" style="grid-column: span 2; text-align: center; background: var(--bg-sec);">
                             <span style="font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Динамика аудитории (24ч)</span><br>
                             <div style="display: flex; justify-content: space-around; margin-top: 15px; align-items: center;">
                                 <div style="color: #4ade80; font-size: 28px; font-weight: bold;">+<span id="stat-24-plus">0</span></div>
-                                <div style="width: 1px; height: 30px; background: #333;"></div>
+                                <div style="width: 1px; height: 30px; background: var(--border);"></div>
                                 <div style="color: #f87171; font-size: 28px; font-weight: bold;">-<span id="stat-24-minus">0</span></div>
                             </div>
                         </div>
@@ -89,6 +98,14 @@
                 </div>
             </div>
 
+            <!-- ЭКРАН: DIRECT MESSAGES -->
+            <div id="view-direct" class="view">
+                <div class="pad-15" style="padding-bottom: 5px;">
+                    <h2 style="margin: 0;">Сообщения</h2>
+                </div>
+                <div id="dm-list" class="dm-list"></div>
+            </div>
+
             <!-- ЭКРАН: НАСТРОЙКИ -->
             <div id="view-settings" class="view">
                 <div class="pad-15">
@@ -98,8 +115,8 @@
                     <div class="input-group"><label>Никнейм</label><input type="text" id="inp-username" class="input-field"></div>
                     <div class="input-group"><label>Подписчики</label><input type="number" id="inp-followers" class="input-field"></div>
                     <button class="btn primary-btn" onclick="saveSettings()">Сохранить профиль</button>
-                    <hr class="divider" style="border: none; border-top: 1px solid #333; margin: 20px 0;">
-                    <button class="btn danger-btn" onclick="resetProgress()" style="background: #3a1111; color: #ff4d4d; border: 1px solid #ff4d4d; width: 100%;">⚠️ Сбросить весь прогресс</button>
+                    <hr class="divider" style="border: none; border-top: 1px solid var(--border); margin: 20px 0;">
+                    <button class="btn danger-btn" onclick="resetProgress()" style="background: rgba(255,0,0,0.1); color: #ff4d4d; border: 1px solid #ff4d4d; width: 100%;">⚠️ Сбросить весь прогресс</button>
                 </div>
             </div>
         </main>
@@ -113,7 +130,7 @@
             <button class="nav-btn" onclick="switchTab('profile')"><svg class="nav-svg" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21v-2a4 4 0 014-4h8a4 4 0 014 4v2"/></svg></button>
         </nav>
 
-        <!-- МОДАЛКА ДОБАВЛЕНИЯ -->
+        <!-- МОДАЛКА ДОБАВЛЕНИЯ И ВЬЮВЕР МЕДИА -->
         <div id="modal-add" class="modal hidden">
             <div class="modal-content slide-up">
                 <div class="modal-header"><h3>Создать</h3><button class="close-btn" onclick="closeModals()">&times;</button></div>
@@ -123,29 +140,27 @@
             </div>
         </div>
 
-        <!-- ПОЛНОЭКРАННЫЙ ПРОСМОТР -->
         <div id="modal-viewer" class="viewer hidden">
             <div id="story-progress" class="story-progress hidden"><div id="story-bar"></div></div>
             <button class="viewer-menu-btn" id="viewer-menu-toggle" onclick="openPostMenu()">⋮</button>
             <button class="close-viewer-btn" onclick="closeModals()">&times;</button>
-            
-            <div id="viewer-media" class="viewer-media">
-                <div id="heart-anim" class="heart-overlay hidden">
-                    <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-                </div>
-            </div>
-            
+            <div id="viewer-media" class="viewer-media"><div id="heart-anim" class="heart-overlay hidden"><svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></div></div>
             <div id="viewer-info" class="viewer-info"></div>
-            <div id="my-comment-box" class="comment-box hidden">
-                <input type="text" id="my-comment-input" placeholder="Добавить комментарий...">
-                <button onclick="addMyComment()">Отправить</button>
-            </div>
+            <div id="my-comment-box" class="comment-box hidden"><input type="text" id="my-comment-input" placeholder="Добавить комментарий..."><button onclick="addMyComment()">Отправить</button></div>
+            <div id="post-action-menu" class="post-action-menu hidden"><button id="btn-archive" onclick="toggleArchive()">В архив</button><button onclick="deletePost()" style="color: #ff4d4d; font-weight: bold;">Удалить пост</button><button onclick="closePostMenu()">Отмена</button></div>
+        </div>
 
-            <!-- Меню действий поста -->
-            <div id="post-action-menu" class="post-action-menu hidden">
-                <button id="btn-archive" onclick="toggleArchive()">В архив</button>
-                <button onclick="deletePost()" style="color: #ff4d4d; font-weight: bold;">Удалить пост</button>
-                <button onclick="closePostMenu()">Отмена</button>
+        <!-- МОДАЛКА: ЧАТ DIRECT -->
+        <div id="modal-chat" class="viewer hidden" style="background: var(--bg); z-index: 200;">
+            <div class="top-bar">
+                <button class="icon-btn" onclick="closeChat()">←</button>
+                <h2 class="username-title" id="chat-header-name">@user</h2>
+                <div style="width: 26px;"></div> <!-- Пустое место для баланса -->
+            </div>
+            <div class="chat-history" id="chat-history"></div>
+            <div class="comment-box" style="background: var(--bg-sec); border-top: 1px solid var(--border);">
+                <input type="text" id="chat-input" placeholder="Написать сообщение...">
+                <button onclick="sendChatMessage()">Отправить</button>
             </div>
         </div>
 
