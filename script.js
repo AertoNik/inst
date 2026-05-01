@@ -1,5 +1,4 @@
-// --- 1. ЛОКАЛЬНАЯ БАЗА ДАННЫХ (Для фото и видео) ---
-// IndexedDB спасает нас от лимита localStorage в 5мб.
+// --- 1. ЛОКАЛЬНАЯ БАЗА ДАННЫХ (Для медиа) ---
 const DB_NAME = 'InstaSimDB';
 function initDB() {
     return new Promise((resolve, reject) => {
@@ -37,23 +36,24 @@ const defaultState = {
     followers: 1420,
     following: 35,
     avatarId: null,
-    posts: [] // {id, type: 'post'|'reel'|'story', timestamp, myComments: []}
+    posts: [],
+    history: [] // Хранит {ts: время, diff: + или -} для динамики за 24ч
 };
 
 let state = JSON.parse(localStorage.getItem('insta_sim_state')) || defaultState;
-let currentGridTab = 'posts';
-let currentViewItem = null; // Для модалки комментариев
+if (!state.history) state.history = []; // Защита для старых сохранений
 
-function saveState() {
+let currentGridTab = 'posts';
+let currentViewItem = null;
+
+function saveStateLocally() {
     localStorage.setItem('insta_sim_state', JSON.stringify(state));
-    updateUIFromState();
 }
 
-// --- 3. ДВИЖОК СИМУЛЯЦИИ РОСТА ---
-const FAKE_COMMENTS = ["Вау 🔥", "Атмосферно!", "Где это?", "Топ", "Очень красиво 🎬", "bro this is good", "love this", "Шедевр!"];
-const FAKE_USERS = ["cyber.neo", "dark_matter", "detective_sys", "neon_dreamer", "pastry.pro"];
+// --- 3. ДВИЖОК СИМУЛЯЦИИ РОСТА И ПАДЕНИЯ ---
+const FAKE_COMMENTS = ["Вау 🔥", "Атмосферно!", "Где это?", "Топ", "Очень красиво 🎬", "bro this is good", "love this", "Шедевр!", "Идеальный кадр", "Вайбово"];
+const FAKE_USERS = ["cyber.neo", "dark_matter", "detective_sys", "neon_dreamer", "pastry.pro", "warden_official"];
 
-// Вычисляет лайки/просмотры в зависимости от времени публикации и числа подписчиков
 function calculateLiveStats(item) {
     const ageMinutes = Math.max((Date.now() - item.timestamp) / 60000, 0);
     const f = parseInt(state.followers) || 0;
@@ -61,12 +61,11 @@ function calculateLiveStats(item) {
     let likes = 0, views = 0, comments = 0, reposts = 0;
 
     if (item.type === 'story') {
-        const progress = Math.min(ageMinutes / 5, 1); // Живет 5 минут
-        views = Math.floor(f * 0.4 * progress); // до 40% охвата
+        const progress = Math.min(ageMinutes / 5, 1);
+        views = Math.floor(f * 0.4 * progress);
         return { views };
     }
 
-    // Логарифмический рост: быстро в начале, медленно потом
     const growth = Math.log10(ageMinutes * 2 + 1);
 
     if (item.type === 'post') {
@@ -74,33 +73,26 @@ function calculateLiveStats(item) {
         comments = Math.floor(likes * 0.05);
         reposts = Math.floor(likes * 0.02);
     } else if (item.type === 'reel') {
-        views = Math.floor(f * 1.5 * growth); // Виральность (больше подписчиков)
+        views = Math.floor(f * 1.5 * growth);
         likes = Math.floor(views * 0.12);
         comments = Math.floor(likes * 0.1);
         reposts = Math.floor(views * 0.05);
     }
 
-    // Добавляем свои комменты к фейковым
     const myCommentsCount = item.myComments ? item.myComments.length : 0;
-
     return { likes, views, comments: comments + myCommentsCount, reposts };
 }
 
 // --- 4. ИНТЕРФЕЙС И ЛОГИКА ---
-function updateUIFromState() {
-    // Тема
+function updateFullUI() {
     document.body.className = state.theme === 'dark' ? 'dark-mode' : '';
-    
-    // Тексты в профиле
     document.getElementById('header-username').innerText = `@${state.username}`;
     document.getElementById('stat-followers').innerText = state.followers;
     document.getElementById('stat-following').innerText = state.following;
     
-    // Настройки
     document.getElementById('inp-username').value = state.username;
     document.getElementById('inp-followers').value = state.followers;
 
-    // Аватар
     if (state.avatarId) {
         getMediaFile(state.avatarId).then(src => {
             if(src) document.getElementById('profile-avatar').src = src;
@@ -110,6 +102,11 @@ function updateUIFromState() {
     renderGrid();
     renderStories();
     renderStatsPage();
+}
+
+// Обновляет только цифры, чтобы не сбивать фокус в настройках
+function updateLiveNumbers() {
+    document.getElementById('stat-followers').innerText = state.followers;
 }
 
 function switchTab(tabId) {
@@ -127,18 +124,20 @@ function setGridTab(tab) {
 
 function toggleTheme() {
     state.theme = state.theme === 'dark' ? 'light' : 'dark';
-    saveState();
+    saveStateLocally();
+    document.body.className = state.theme === 'dark' ? 'dark-mode' : '';
 }
 
 function saveSettings() {
     state.username = document.getElementById('inp-username').value;
-    state.followers = document.getElementById('inp-followers').value;
-    saveState();
+    state.followers = parseInt(document.getElementById('inp-followers').value) || 0;
+    saveStateLocally();
+    updateFullUI();
     switchTab('profile');
 }
 
 async function resetProgress() {
-    if(confirm('Точно сбросить? Все фото и видео удалятся.')) {
+    if(confirm('Точно сбросить? Все фото, история подписчиков и статистика удалятся навсегда.')) {
         localStorage.removeItem('insta_sim_state');
         await clearDB();
         location.reload();
@@ -149,7 +148,6 @@ async function resetProgress() {
 async function renderGrid() {
     const grid = document.getElementById('profile-grid');
     grid.innerHTML = '';
-    
     const items = state.posts.filter(p => currentGridTab === 'reels' ? p.type === 'reel' : p.type === 'post').reverse();
     document.getElementById('stat-posts').innerText = state.posts.filter(p => p.type !== 'story').length;
 
@@ -160,10 +158,7 @@ async function renderGrid() {
         div.onclick = () => openViewer(item, src);
         
         const isVideo = src.startsWith('data:video');
-        div.innerHTML = isVideo 
-            ? `<video src="${src}" muted></video><div class="feed-icon">▶</div>` 
-            : `<img src="${src}">`;
-        
+        div.innerHTML = isVideo ? `<video src="${src}" muted></video><div class="feed-icon">▶</div>` : `<img src="${src}">`;
         grid.appendChild(div);
     }
 }
@@ -171,8 +166,6 @@ async function renderGrid() {
 async function renderStories() {
     const bar = document.getElementById('stories-bar');
     bar.innerHTML = '';
-    
-    // Оставляем только сторис младше 5 минут (300000 мс)
     const activeStories = state.posts.filter(p => p.type === 'story' && (Date.now() - p.timestamp) < 300000);
 
     for (const story of activeStories) {
@@ -188,6 +181,7 @@ async function renderStories() {
 }
 
 function renderStatsPage() {
+    // 1. Считаем лайки и комменты
     let tLikes = 0, tViews = 0, tComments = 0, tReposts = 0;
     state.posts.forEach(p => {
         const s = calculateLiveStats(p);
@@ -198,18 +192,31 @@ function renderStatsPage() {
     document.getElementById('total-likes').innerText = tLikes;
     document.getElementById('total-comments').innerText = tComments;
     document.getElementById('total-reposts').innerText = tReposts;
+
+    // 2. Считаем динамику + и - за последние 24 часа
+    let plus24 = 0, minus24 = 0;
+    const dayAgo = Date.now() - (24 * 60 * 60 * 1000);
+    
+    state.history.forEach(h => {
+        if (h.ts > dayAgo) {
+            if (h.diff > 0) plus24 += h.diff;
+            else minus24 += Math.abs(h.diff);
+        }
+    });
+
+    document.getElementById('stat-24-plus').innerText = plus24;
+    document.getElementById('stat-24-minus').innerText = minus24;
 }
 
-// --- 6. ЗАГРУЗКА И ПРОСМОТР (Модалки) ---
+// --- 6. МОДАЛКИ И ВЬЮВЕР ---
 function openAddModal() { document.getElementById('modal-add').classList.remove('hidden'); }
 function closeModals() { 
     document.getElementById('modal-add').classList.add('hidden'); 
     document.getElementById('modal-viewer').classList.add('hidden');
-    document.getElementById('viewer-media').innerHTML = ''; // стоп видео
+    document.getElementById('viewer-media').innerHTML = ''; 
     clearTimeout(window.storyTimer);
 }
 
-// Универсальный обработчик загрузки
 async function handleUpload(e, type) {
     const file = e.target.files[0];
     if(!file) return;
@@ -220,7 +227,8 @@ async function handleUpload(e, type) {
         await saveMediaFile(id, event.target.result);
         
         state.posts.push({ id, type, timestamp: Date.now(), myComments: [] });
-        saveState();
+        saveStateLocally();
+        updateFullUI();
         closeModals();
         if(type === 'story') switchTab('profile');
     };
@@ -234,7 +242,8 @@ document.getElementById('avatar-upload').onchange = async (e) => {
     reader.onload = async (ev) => {
         await saveMediaFile('avatar', ev.target.result);
         state.avatarId = 'avatar';
-        saveState();
+        saveStateLocally();
+        updateFullUI();
     };
     reader.readAsDataURL(file);
 };
@@ -243,7 +252,6 @@ document.getElementById('upload-post').onchange = (e) => handleUpload(e, 'post')
 document.getElementById('upload-reel').onchange = (e) => handleUpload(e, 'reel');
 document.getElementById('upload-story').onchange = (e) => handleUpload(e, 'story');
 
-// Открытие фото/видео во весь экран
 function openViewer(item, src) {
     currentViewItem = item;
     const viewer = document.getElementById('modal-viewer');
@@ -256,9 +264,7 @@ function openViewer(item, src) {
     viewer.classList.remove('hidden');
     
     const isVideo = src.startsWith('data:video');
-    mediaBox.innerHTML = isVideo 
-        ? `<video src="${src}" autoplay loop controls></video>` 
-        : `<img src="${src}">`;
+    mediaBox.innerHTML = isVideo ? `<video src="${src}" autoplay loop controls></video>` : `<img src="${src}">`;
 
     const stats = calculateLiveStats(item);
 
@@ -277,13 +283,12 @@ function openViewer(item, src) {
         storyProg.classList.add('hidden');
         commentBox.classList.remove('hidden');
         
-        // Генерируем HTML для комментов
         let commentsHTML = '';
         if(item.myComments) {
             item.myComments.forEach(c => commentsHTML += `<div style="margin-bottom:5px"><b>@${state.username}</b> ${c}</div>`);
         }
-        for(let i=0; i<Math.min(stats.comments, 3); i++) {
-            const u = FAKE_USERS[i % FAKE_USERS.length];
+        for(let i=0; i<Math.min(stats.comments, 5); i++) {
+            const u = FAKE_USERS[(i + item.timestamp) % FAKE_USERS.length];
             const t = FAKE_COMMENTS[(i + item.timestamp) % FAKE_COMMENTS.length];
             commentsHTML += `<div style="margin-bottom:5px; color:#aaa"><b>${u}</b> ${t}</div>`;
         }
@@ -295,33 +300,66 @@ function openViewer(item, src) {
                 <span>↗️ ${stats.reposts}</span>
                 ${item.type === 'reel' ? `<span>👁 ${stats.views}</span>` : ''}
             </div>
-            <div style="max-height:100px; overflow-y:auto; font-size:14px; border-top:1px solid #333; padding-top:10px;">
+            <div style="max-height:150px; overflow-y:auto; font-size:14px; border-top:1px solid #333; padding-top:10px;">
                 ${commentsHTML || '<div style="color:#777">Нет комментариев</div>'}
             </div>
         `;
     }
 }
 
-// Оставить свой комментарий
 function addMyComment() {
     const inp = document.getElementById('my-comment-input');
     if(inp.value.trim() && currentViewItem) {
         if(!currentViewItem.myComments) currentViewItem.myComments = [];
         currentViewItem.myComments.push(inp.value.trim());
         inp.value = '';
-        saveState(); // сохраняем
-        
-        // Обновляем вьювер
+        saveStateLocally();
         getMediaFile(currentViewItem.id).then(src => openViewer(currentViewItem, src));
     }
 }
 
-// --- 7. ЖИВОЙ ЦИКЛ ---
-// Каждые 3 секунды пересчитываем статы (создает эффект живой активности)
+// --- 7. ЖИВОЙ ЦИКЛ (Подписки, отписки, статистика) ---
 setInterval(() => {
+    let hasChanges = false;
+
+    // 1. Колебание аудитории (Шанс 40% каждую секунду)
+    if (Math.random() > 0.6) {
+        let currentF = parseInt(state.followers) || 0;
+        let diff = 0;
+        
+        // 30% шанс на отписку, 70% на подписку
+        if (Math.random() < 0.3) {
+            diff = -(Math.floor(Math.random() * 2) + 1); // от -1 до -2
+        } else {
+            diff = Math.floor(Math.random() * 3) + 1; // от +1 до +3
+        }
+
+        // Защита от ухода в минус
+        if (currentF + diff < 0) diff = -currentF;
+
+        if (diff !== 0) {
+            state.followers = currentF + diff;
+            state.history.push({ ts: Date.now(), diff: diff });
+            hasChanges = true;
+        }
+    }
+
+    // 2. Очистка старой истории (старше 24 часов)
+    const dayAgo = Date.now() - (24 * 60 * 60 * 1000);
+    if (state.history.length > 0 && state.history[0].ts < dayAgo) {
+        state.history = state.history.filter(h => h.ts > dayAgo);
+        hasChanges = true;
+    }
+
+    if (hasChanges) {
+        saveStateLocally();
+        updateLiveNumbers(); // Обновляем число в шапке
+    }
+
+    // 3. Обновляем графики и таймеры сторис
     renderStatsPage();
-    renderStories(); // Чтобы сторис старше 5 мин пропадали
-}, 3000);
+    renderStories();
+}, 2000); // Цикл работает каждые 2 секунды
 
 // СТАРТ
-updateUIFromState();
+updateFullUI();

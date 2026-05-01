@@ -16,7 +16,7 @@
             <button class="icon-btn" onclick="openAddModal()">+</button>
         </header>
 
-        <!-- ОСНОВНОЙ КОНТЕНТ (Переключение вкладок) -->
+        <!-- ОСНОВНОЙ КОНТЕНТ -->
         <main class="main-content">
             
             <!-- ЭКРАН: ПРОФИЛЬ -->
@@ -43,9 +43,7 @@
                 </div>
 
                 <!-- Блок Сторис -->
-                <div class="stories-bar" id="stories-bar">
-                    <!-- Сторис генерируются здесь -->
-                </div>
+                <div class="stories-bar" id="stories-bar"></div>
 
                 <!-- Табы сетки -->
                 <div class="grid-tabs">
@@ -62,12 +60,21 @@
                 <div class="pad-15">
                     <h2>Аналитика профиля</h2>
                     <div class="stats-cards">
+                        <!-- Новая карточка динамики -->
+                        <div class="card" style="grid-column: span 2; text-align: center; background: #1a1a1a;">
+                            <span style="font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Динамика аудитории (24ч)</span><br>
+                            <div style="display: flex; justify-content: space-around; margin-top: 15px; align-items: center;">
+                                <div style="color: #4ade80; font-size: 28px; font-weight: bold;">+<span id="stat-24-plus">0</span></div>
+                                <div style="width: 1px; height: 30px; background: #333;"></div>
+                                <div style="color: #f87171; font-size: 28px; font-weight: bold;">-<span id="stat-24-minus">0</span></div>
+                            </div>
+                        </div>
+
                         <div class="card">Охват (Просмотры)<br><b id="total-views" class="accent-text">0</b></div>
                         <div class="card">Всего лайков<br><b id="total-likes">0</b></div>
                         <div class="card">Комментарии<br><b id="total-comments">0</b></div>
                         <div class="card">Репосты<br><b id="total-reposts">0</b></div>
                     </div>
-                    <p class="hint">Алгоритм симуляции работает. Охваты зависят от количества твоих подписчиков и времени жизни публикации.</p>
                 </div>
             </div>
 
@@ -84,13 +91,13 @@
                         <input type="text" id="inp-username" class="input-field">
                     </div>
                     <div class="input-group">
-                        <label>Подписчики (влияет на охваты)</label>
+                        <label>Подписчики (Стартовая база)</label>
                         <input type="number" id="inp-followers" class="input-field">
                     </div>
                     <button class="btn primary-btn" onclick="saveSettings()">Сохранить профиль</button>
                     
-                    <hr class="divider">
-                    <button class="btn danger-btn" onclick="resetProgress()">⚠️ Сбросить весь прогресс</button>
+                    <hr class="divider" style="border: none; border-top: 1px solid #333; margin: 20px 0;">
+                    <button class="btn danger-btn" onclick="resetProgress()" style="background: #3a1111; color: #ff4d4d; border: 1px solid #ff4d4d; width: 100%;">⚠️ Сбросить весь прогресс</button>
                 </div>
             </div>
         </main>
@@ -117,18 +124,12 @@
             </div>
         </div>
 
-        <!-- ПОЛНОЭКРАННЫЙ ПРОСМОТР (Viewer) -->
+        <!-- ПОЛНОЭКРАННЫЙ ПРОСМОТР -->
         <div id="modal-viewer" class="viewer hidden">
             <div id="story-progress" class="story-progress hidden"><div id="story-bar"></div></div>
             <button class="close-viewer-btn" onclick="closeModals()">&times;</button>
-            
             <div id="viewer-media" class="viewer-media"></div>
-            
-            <div id="viewer-info" class="viewer-info">
-                <!-- Статистика и комменты -->
-            </div>
-            
-            <!-- Поле для своих комментов -->
+            <div id="viewer-info" class="viewer-info"></div>
             <div id="my-comment-box" class="comment-box hidden">
                 <input type="text" id="my-comment-input" placeholder="Добавить комментарий...">
                 <button onclick="addMyComment()">Отправить</button>
